@@ -1,0 +1,36 @@
+1031:      status: orderPayload.status || existingOrder?.status || 'pending'
+1211:                : "Your merchant registration request is currently pending Administrator approval.",
+1336:  // Pending Payouts Sum
+1337:  const pendingPayoutsSum = useMemo(() => {
+1339:      .filter((p) => p.status === "pending")
+2460:                  title={lang === "sw" ? "Malipo Kusubiri" : "Pending Payouts"}
+2461:                  value={<PriceDisplay amount={pendingPayoutsSum} />}
+4005:                      {s.isApproved === false ? (lang === "sw" ? "Inasubiri Idhini" : "Pending Approval") : (lang === "sw" ? "Idhini: Sawa" : "Approved")}
+4529:                  {p.status === "pending" && (
+4633:                    <span className="text-orange-600 font-bold">Pending</span>
+4757:      status: "pending" | "success" | "error";
+4828:      "pending",
+4915:        "pending",
+4950:    status: "pending" | "success" | "error" = "pending",
+5376:        "pending",
+5396:                "pending",
+5488:      "pending",
+5503:            "pending",
+5521:        "pending",
+5578:      "pending",
+5594:        "pending",
+5670:      "pending",
+5682:          "pending",
+5729:      "pending",
+5749:          "pending",
+5881:                    log.status === "pending" && (
+7084:      status: orderPayload.status || existingOrder?.status || 'pending'
+7570:    if (s === "PENDING" || s === "CREATED") return "CREATED";
+7586:    pending: 1,
+7914:              <option value="pending">{lang === "sw" ? "Pending (Zinasubiri)" : "Pending"}</option>
+8131:                                ⏳ PENDING
+12092:  const [aiTotalPending, setAiTotalPending] = useState(0);
+12438:        setAiTotalPending(res.totalPending || 0);
+12440:          setAiMessage(isSw ? "Bidhaa zote zimepangwa vizuri! Hakuna unorganized items." : "All products are properly organized! No pending unorganized items found.");
+15531:            time: formatRelativeTime(metrics.lastPendingDts || new Date(now.getTime() - 15 * 60000)), 
+15534:              : (lang === "sw" ? `Kikumbusho cha kiotomatiki kimetumwa kwa wateja ${metrics.pendingOrdersCount || 0} wenye oda zinazosubiri malipo.` : `Sent ${metrics.pendingOrdersCount || 0} automatic recovery reminders for pending order checkouts.`), 

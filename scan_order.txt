@@ -1,0 +1,125 @@
+7212-    }
+7213-
+7214-    return list;
+7215-  }, [orders, trendInterval, lang]);
+7216-
+7217:  const [scanningOrder, setScanningOrder] = useState<Order | null>(null);
+7218-  const [scannedItemsMap, setScannedItemsMap] = useState<Record<string, number>>({});
+7219-  const [inputBarcode, setInputBarcode] = useState("");
+7220-  const [showOrderCameraScanner, setShowOrderCameraScanner] = useState(false);
+7221-  const [riderName, setRiderName] = useState("");
+7222-  const [riderPhone, setRiderPhone] = useState("");
+--
+7231-    setRiderPhone("");
+7232-    setRiderVehicle("");
+7233-  };
+7234-
+7235-  const handleVerifyBarcodeSku = (skuToVerify: string) => {
+7236:    if (!scanningOrder) return;
+7237-    const cleanedSku = skuToVerify.trim();
+7238-    if (!cleanedSku) {
+7239-      showAlert(
+7240-        lang === "sw"
+7241-          ? "Tafadhali ingiza au changanua msimbo wa SKU kabla ya kubonyeza Thibitisha!"
+--
+7245-      return;
+7246-    }
+7247-
+7248-    let matchedItem: { productId: string; rName: string; maxQty: number; currentScanned: number } | null = null;
+7249-
+7250:    for (const item of scanningOrder.items) {
+7251-      const prod = products.find((p) => p.id === item.productId);
+7252-      if (prod && prod.sku && prod.sku.trim().toLowerCase() === cleanedSku.toLowerCase()) {
+7253-        const currentScanned = scannedItemsMap[item.productId] || 0;
+7254-        matchedItem = {
+7255-          productId: item.productId,
+--
+7292-    }
+7293-    setInputBarcode("");
+7294-  };
+7295-
+7296-  const handleFulfillAndShipOrder = async () => {
+7297:    if (!scanningOrder) return;
+7298-
+7299-    // Run strict, Zod-like structural validation on shipping state object
+7300-    const validation = SchemaValidator.validateShippingState(
+7301:      { ...scanningOrder, status: "shipped" },
+7302-      lang === "sw" ? "sw" : "en"
+7303-    );
+7304-    if (!validation.success || !validation.data) {
+7305-      showAlert(validation.error || "Order shipping validation failed", "error");
+7306-      return;
+7307-    }
+7308-
+7309-    let allScanned = true;
+7310:    for (const item of scanningOrder.items) {
+7311-      const scannedCount = scannedItemsMap[item.productId] || 0;
+7312-      if (scannedCount < item.quantity) {
+7313-        allScanned = false;
+7314-        break;
+7315-      }
+--
+7328-      }
+7329-    }
+7330-
+7331-    try {
+7332-      const updatedOrder = { 
+7333:        ...scanningOrder, 
+7334-        status: "shipped" as const,
+7335-        staffName: currentStaff?.name || "Orbi Root Admin",
+7336-        staffEmail: currentStaff?.email || "admin.orbi@gmail.com",
+7337-        riderName: riderName.trim() || undefined,
+7338-        riderPhone: riderPhone.trim() || undefined,
+7339-        riderVehicle: riderVehicle.trim() || undefined
+7340-      };
+7341:      await saveOrderWithValidation(updatedOrder, scanningOrder);
+7342:      setOrders(orders.map((o) => (o.id === scanningOrder.id ? updatedOrder : o)));
+7343-      showAlert(
+7344-        lang === "sw"
+7345:          ? `Oda #${getOrderNumber(scanningOrder.id)} imehakikiwa na kusafirishwa! Rekodi ya stoki imehifadhiwa!`
+7346:          : `Order #${getOrderNumber(scanningOrder.id)} has been successfully verified, shipped and inventory recorded!`,
+7347-        "success"
+7348-      );
+7349-      closeOrderScanning();
+7350-    } catch (e: any) {
+7351-      showAlert(
+--
+7980-          onClose={() => setViewInvoiceOrder(null)}
+7981-          lang={lang}
+7982-        />
+7983-      )}
+7984-
+7985:      {scanningOrder && (
+7986-        <div
+7987-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+7988-          style={{ zIndex: 99999 }}
+7989-        >
+7990-          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 text-left">
+--
+7995-                  <Barcode size={22} />
+7996-                </div>
+7997-                <div>
+7998-                  <h3 className="text-lg font-black text-slate-900">
+7999-                    {lang === "sw" 
+8000:                      ? `Kuhakiki & Kusafirisha Oda #${getOrderNumber(scanningOrder.id)}` 
+8001:                      : `Verify & Ship Order #${getOrderNumber(scanningOrder.id)}`}
+8002-                  </h3>
+8003-                  <p className="text-xs text-slate-500 font-medium font-mono">
+8004:                    ID: {scanningOrder.id}
+8005-                  </p>
+8006-                </div>
+8007-              </div>
+8008-              <button 
+8009-                onClick={closeOrderScanning} 
+--
+8095-              <div>
+8096-                <p className="text-xs font-black text-slate-500 uppercase tracking-wider mb-2">
+8097-                  {lang === "sw" ? "ORODHA KAUSHIRISHI YENYE UHAKIKI:" : "VERIFICATION CHECKLIST & STATUS:"}
+8098-                </p>
+8099-                <div className="border border-slate-100 rounded-xl overflow-hidden divide-y divide-slate-100">
+8100:                  {scanningOrder.items.map((item) => {
+8101-                    const scannedQty = scannedItemsMap[item.productId] || 0;
+8102-                    const requiredQty = item.quantity;
+8103-                    const isCompleted = scannedQty >= requiredQty;
+8104-
+8105-                    return (

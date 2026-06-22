@@ -1,0 +1,106 @@
+378:            if (xhr.status >= 200 && xhr.status < 300) {
+388:                reject(new Error(`Kosa la kupakia faili: ${xhr.statusText}`));
+459:  onUpdateStatus: (id: string, status: "confirmed" | "customer_confirmed" | "cancelled" | "delivered") => void;
+533:            order.status === "delivered"
+535:              : order.status === "shipped"
+537:                : order.status === "customer_confirmed"
+539:                  : order.status === "confirmed"
+541:                    : order.status === "cancelled"
+546:          {order.status === "delivered"
+548:            : order.status === "shipped" 
+550:              : order.status === "customer_confirmed"
+552:                : order.status === "confirmed"
+554:                  : order.status.toUpperCase()}
+572:        {order.status === "pending" && (
+588:        {order.status === "confirmed" && (
+604:        {order.status === "customer_confirmed" && (
+620:        {order.status === "shipped" && (
+637:        {order.status === "delivered" && (
+1005:            status: "active",
+1046:      .filter((o) => o.status === "confirmed" || o.status === "shipped" || o.status === "delivered")
+1066:        if (order.status === "confirmed") {
+1140:      if (o.status !== "cancelled") {
+1182:        if (order.status === "confirmed") {
+2010:                          {t(lang, "word.status")}
+2039:                                  o.status === "delivered"
+2041:                                    : o.status === "shipped"
+2043:                                      : o.status === "customer_confirmed"
+2045:                                        : o.status === "confirmed"
+2047:                                          : o.status === "cancelled"
+2052:                                {o.status === "customer_confirmed" ? "CUST_CONFIRMED" : o.status}
+2826:  const [status, setStatus] = useState("active");
+2854:      setStatus(s.status || "active");
+2899:            status: status as "active" | "frozen",
+2924:          status: status as "active" | "frozen",
+3097:                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${s.status === 'frozen' ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
+3098:                      {s.status === 'frozen' ? 'Frozen' : 'Active'}
+3323:                    value={status}
+3534:  const updateStatus = async (id: string, status: "paid" | "cancelled") => {
+3539:      status,
+3540:      paidAt: status === "paid" ? Date.now() : undefined,
+3568:                      p.status === "paid"
+3570:                        : p.status === "cancelled"
+3575:                    {p.status}
+3579:                  {p.status === "pending" && (
+3805:      status: "pending" | "success" | "error";
+3998:    status: "pending" | "success" | "error" = "pending",
+4013:            ? { ...item, text, subtext, status, progress, timestamp }
+4017:        return [{ id, text, subtext, status, progress, timestamp }, ...prev];
+4929:                    log.status === "pending" && (
+4944:                      log.status === "success"
+4946:                        : log.status === "error"
+4951:                    {log.status === "success"
+4953:                      : log.status === "error"
+6106:  const [statusFilter, setStatusFilter] = useState<
+6199:      { ...scanningOrder, status: "shipped" },
+6232:        status: "shipped" as const,
+6284:    status: "confirmed" | "customer_confirmed" | "cancelled" | "delivered",
+6287:    if (status === "confirmed") {
+6291:    } else if (status === "customer_confirmed") {
+6295:    } else if (status === "cancelled") {
+6299:    } else if (status === "delivered") {
+6317:    if (status === "cancelled" && matchedOrder && (matchedOrder as Order).status !== "cancelled") {
+6333:      prevOrders.map((o) => (o.id === orderId ? { ...o, status } : o))
+6338:      status,
+6419:  const statusWeights: Record<string, number> = {
+6433:    const matchesStatus = statusFilter === "all" || o.status === statusFilter;
+6438:    const wA = statusWeights[a.status] || 99;
+6439:    const wB = statusWeights[b.status] || 99;
+6446:  const confirmedOrders = orders.filter((o) => ["confirmed", "customer_confirmed", "shipped", "delivered"].includes(o.status));
+6483:            value={statusFilter}
+7551:                let statusLabel = "";
+7552:                let statusColor = "";
+7555:                  statusLabel = "Scheduled";
+7556:                  statusColor = "bg-blue-100 text-blue-800 border-blue-200";
+7558:                  statusLabel = "Active";
+7559:                  statusColor = "bg-emerald-100 text-emerald-800 border-emerald-200 animate-pulse";
+7561:                  statusLabel = "Expired";
+7562:                  statusColor = "bg-red-100 text-red-800 border-red-200";
+7569:                        <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${statusColor}`}>
+7570:                          {statusLabel}
+8148:        console.error("Error loaded AI bypass status:", e);
+9760:    const newStatus = customer.status === "frozen" ? "active" : "frozen";
+9761:    if (!await showConfirm(`Change status to ${newStatus} for ${customer.name}?`)) return;
+9763:      await supabase.from("customers").update({ status: newStatus }).eq('id', customer.id);
+9764:      setCustomers(customers.map(c => c.id === customer.id ? { ...c, status: newStatus } : c));
+9765:      showAlert(`Customer status changed to ${newStatus}.`, "success");
+9768:      showAlert("Error updating status.", "error");
+9930:                  o.status !== "cancelled",
+9947:                          <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${c.status === 'frozen' ? 'bg-red-50 border border-red-100 text-red-600' : 'bg-emerald-50 border border-emerald-100 text-emerald-700'}`}>
+9948:                            {c.status === 'frozen' ? 'Frozen' : 'Active'}
+10027:                          c.status === "frozen" 
+10031:                        title={c.status === "frozen" ? "Activate Customer" : "Freeze Customer"}
+10033:                        <Lock size={14} strokeWidth={2.5} /> {c.status === "frozen" ? "Unfreeze" : "Freeze"}
+10221:                              (o.status === "confirmed" || o.status === "shipped" || o.status === "delivered"),
+10306:                              o.status === "delivered"
+10308:                                : o.status === "shipped"
+10310:                                  : o.status === "confirmed"
+10312:                                    : o.status === "cancelled"
+10317:                            {o.status === "delivered"
+10319:                              : o.status === "shipped" 
+10321:                                : o.status.toUpperCase()}
+12731:                {order.status === "delivered" 
+12981:                  {order.status === "delivered" 
+13025:                  {order.status === "delivered" ? (
+13038:              {order.status !== "delivered" && (
+13153:              {order.status !== "delivered" && inv.terms && (

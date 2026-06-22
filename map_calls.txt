@@ -1,0 +1,77 @@
+331:      {bgList.map((bg, idx) => {
+473:            {options.map(opt => (
+602:      .map((p) => ({ ...p, title: p.title.replace("[HERO] ", "") }));
+670:          uncounted.map((adObj) =>
+678:        setCountedAds((prev) => [...prev, ...uncounted.map((u) => u.id)]);
+752:    const proSellerIds = new Set(sellers.filter(s => s.isPro).map(s => s.id));
+891:    const mappedSponsorAds = activeMarketplaceAds.map((ad) => ({
+906:      .map((ad) => {
+917:      .map((x) => x.ad);
+952:      .map((id) => products.find((p) => p.id === id))
+1651:      : Array.from(new Set(products.map((p) => p.niche || "Mengineyo"))).map(
+1661:        .map((s) => {
+1688:            .map((p) => p.category),
+1831:        .map((entry) => entry[0])
+1836:        .map((entry) => entry[0])
+2039:        .map(p => ({
+2045:        .map(item => item.p);
+2321:      .map((p) => {
+2335:      .map((x) => x.p)
+2350:      .map((p) => ({ p, sales: salesMap[p.id] || 0 }))
+2353:      .map((x) => x.p);
+2507:        return prev.map((i) =>
+2525:      prev.map((item) => {
+2569:              {expandedKeywords.map((kw, idx) => (
+2592:                {suggestions.map((p) => (
+2652:                  {searchHistory.map((term) => (
+2676:                  {finalPopularSearches.map((tag) => (
+2699:                  {popularCategories.map((cat) => (
+2845:                                const allIds = notifications.map((n) => n.id);
+2861:                            {notifications.map((n) => {
+3128:              {niches.map((n: Niche) => {
+3191:                     {megaMenuProducts.map(p => (
+3467:                          {topDealsProducts.map((p) => {
+3546:                          {newArrivalsProducts.map((p) => {
+3621:                          {proSellerProducts.map((p) => {
+3686:                            ? Array.from({ length: 4 }).map((_, i) => (
+3692:                            : categories.map((c: any) => (
+3732:                               {megaMenuProducts.slice(0, 4).map(p => (
+3912:                      {Array.from({ length: 12 }).map((_, i) => (
+3953:                                {sortedAdsList.map((ad) => (
+4023:                            {similarSuggestions.map((p) => {
+4326:                      ].map((item, keyIdx) => {
+4342:                    {aiChatHistory.map((chat, idx) => {
+4548:                {cart.map((item, idx) => (
+5013:                    {p.images.map((_, i) => (
+5203:              {p.images.map((img, i) => (
+5249:          {images.map((_, i) => (
+5476:            {promos.map((_, i) => (
+5827:                  {order.items.map((item, idx) => {
+6053:                            .map((po: any) => `${po.name}:\n${po.details}`)
+6086:                      {order.items.map((item, idx) => {
+6484:            purchasedProducts: cart.map((item: any) => ({
+6684:                            {unused.map((cpn: any) => {
+6752:                            {used.map((cpn: any) => (
+6848:                        ].map((preset) => {
+6995:                      ].map((p) => {
+7033:                    ].map(opt => {
+7064:                    options.map((o: any) => (
+8616:    const allIds = chatBubbles.map((b) => b.id);
+8663:          .map((m) => {
+8999:          items: (singleOrder.items || []).map((i: any) => ({
+9092:        .map((m) => m.id);
+9683:                localOrders.map((o) => (
+9980:                        {o.items.map((item) => (
+10051:                                      setLocalOrders((prev) => prev.map((item) => item.id === o.id ? { ...item, status: "delivered" as const } : item));
+10766:                        ].map((item, keyIdx) => {
+10783:                      {aiChatHistory.map((chat, idx) => {
+10850:                      {chatBubbles.map((bubble, idx) => {
+11230:                    {filteredTagProducts.map((prod) => (
+11610:                            {parsedReceiptData.items && parsedReceiptData.items.map((it: any, k: number) => (
+11719:                      {redeemableVouchers.map((v) => {
+11816:                            .map((c) => (
+11908:                      orders.filter(o => o.customerId === userId || o.customer_id === userId).map((o) => {
+11995:                      ].map((p) => {
+12022:                      ].map((hub) => (
+12083:                {selectedConfirmOrder.items.map((it, idx) => (
+12115:                    setLocalOrders((prev) => prev.map((o) => o.id === selectedConfirmOrder.id ? { ...o, status: "delivered" as const } : o));

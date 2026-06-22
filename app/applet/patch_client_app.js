@@ -1,0 +1,402 @@
+const fs = require('fs');
+const path = 'src/pages/ClientApp.tsx';
+let content = fs.readFileSync(path, 'utf8');
+
+const anchor1 = \`  if (!inv) return <div className="p-8 text-center text-slate-500 font-bold">{lang === "sw" ? "Inapakia..." : "Loading..."}</div>;\`;
+const startIdx = content.indexOf(anchor1);
+
+const anchor2 = \`    </>
+  );
+}\`;
+const endIdx = content.indexOf(anchor2, startIdx);
+
+const newBody = \`  const isTraVerified = order.paymentReference?.includes("TRA_VERIFIED") || false;
+  const traInfo = useMemo(() => {
+    if (!isTraVerified) return null;
+    const parts = (order.paymentReference || "").split("||");
+    const info: any = {};
+    parts.forEach((p: string) => {
+      if (p.startsWith("RCTVNUM:")) info.rctvnum = p.substring("RCTVNUM:".length);
+      if (p.startsWith("RCTNUM:")) info.rctnum = p.substring("RCTNUM:".length);
+      if (p.startsWith("GC:")) info.gc = p.substring("GC:".length);
+      if (p.startsWith("DC:")) info.dc = p.substring("DC:".length);
+      if (p.startsWith("DATE:")) info.date = p.substring("DATE:".length);
+      if (p.startsWith("TIME:")) info.time = p.substring("TIME:".length);
+      if (p.startsWith("SIGN:")) info.sign = p.substring("SIGN:".length);
+    });
+    return info;
+  }, [order.paymentReference, isTraVerified]);
+
+  if (!inv) return <div className="p-8 text-center text-slate-500 font-bold">{lang === "sw" ? "Inapakia..." : "Loading..."}</div>;
+
+  const logoSrc = inv.businessLogo || "https://limcgmcytzvotxhthqiu.supabase.co/storage/v1/object/public/PLATFROM%20STOCKS/Platform%20Logos/OrbiShop_Logo_Blue.png";
+
+  return (
+    <>
+      <style>{\`
+      .carbon-paper {
+        background-color: #ffffff;
+        background-image: radial-gradient(#1a2f52 0.3px, transparent 0.3px);
+        background-size: 8px 8px;
+        background-position: 0 0, 4px 4px;
+        box-shadow: 
+          inset 0 0 40px rgba(0,0,0,0.02),
+          0 4px 12px rgba(0,0,0,0.05);
+      }
+      .zigzag-borders {
+        clip-path: polygon(
+          0% 8px, 1.5% 0px, 3% 8px, 4.5% 0px, 6% 8px, 7.5% 0px, 9% 8px, 10.5% 0px, 12% 8px, 13.5% 0px, 15% 8px, 16.5% 0px, 18% 8px, 19.5% 0px, 21% 8px, 22.5% 0px, 24% 8px, 25.5% 0px, 27% 8px, 28.5% 0px, 30% 8px, 31.5% 0px, 33% 8px, 34.5% 0px, 36% 8px, 37.5% 0px, 39% 8px, 40.5% 0px, 42% 8px, 43.5% 0px, 45% 8px, 46.5% 0px, 48% 8px, 49.5% 0px, 51% 8px, 52.5% 0px, 54% 8px, 55.5% 0px, 57% 8px, 58.5% 0px, 60% 8px, 61.5% 0px, 63% 8px, 64.5% 0px, 66% 8px, 67.5% 0px, 69% 8px, 70.5% 0px, 72% 8px, 73.5% 0px, 75% 8px, 76.5% 0px, 78% 8px, 79.5% 0px, 81% 8px, 82.5% 0px, 84% 8px, 85.5% 0px, 87% 8px, 88.5% 0px, 90% 8px, 91.5% 0px, 93% 8px, 94.5% 0px, 96% 8px, 97.5% 0px, 99% 8px, 100% 0px,
+          100% calc(100% - 8px), 98.5% 100%, 97% calc(100% - 8px), 95.5% 100%, 94% calc(100% - 8px), 92.5% 100%, 91% calc(100% - 8px), 89.5% 100%, 88% calc(100% - 8px), 86.5% 100%, 85% calc(100% - 8px), 83.5% 100%, 82% calc(100% - 8px), 80.5% 100%, 79% calc(100% - 8px), 77.5% 100%, 76% calc(100% - 8px), 74.5% 100%, 73% calc(100% - 8px), 71.5% 100%, 70% calc(100% - 8px), 68.5% 100%, 67% calc(100% - 8px), 65.5% 100%, 64% calc(100% - 8px), 62.5% 100%, 61% calc(100% - 8px), 59.5% 100%, 58% calc(100% - 8px), 56.5% 100%, 55% calc(100% - 8px), 53.5% 100%, 52% calc(100% - 8px), 50.5% 100%, 49% calc(100% - 8px), 47.5% 100%, 46% calc(100% - 8px), 44.5% 100%, 43% calc(100% - 8px), 41.5% 100%, 40% calc(100% - 8px), 38.5% 100%, 37% calc(100% - 8px), 35.5% 100%, 34% calc(100% - 8px), 32.5% 100%, 31% calc(100% - 8px), 29.5% 100%, 28% calc(100% - 8px), 26.5% 100%, 25% calc(100% - 8px), 23.5% 100%, 22% calc(100% - 8px), 20.5% 100%, 19% calc(100% - 8px), 17.5% 100%, 16% calc(100% - 8px), 14.5% 100%, 13% calc(100% - 8px), 11.5% 100%, 10% calc(100% - 8px), 8.5% 100%, 7% calc(100% - 8px), 5.5% 100%, 4% calc(100% - 8px), 2.5% 100%, 1% calc(100% - 8px), 0% 100%
+        );
+      }
+      @media print {
+        @page {
+          size: auto;
+          margin: 6mm 10mm 6mm 10mm !important;
+        }
+        body {
+          background: #ffffff !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        body * {
+          visibility: hidden;
+        }
+        #invoice-print-container, #invoice-print-container * {
+          visibility: visible;
+        }
+        #invoice-print-container {
+          position: absolute !important;
+          left: 0 !important;
+          top: 0 !important;
+          width: 100% !important;
+          height: auto !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+          overflow: visible !important;
+          display: block !important;
+          transform: scale(0.92) !important;
+          transform-origin: top left !important;
+        }
+        .invoice-body {
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          border: none !important;
+          box-shadow: none !important;
+          background: #ffffff !important;
+          page-break-inside: avoid;
+        }
+        /* Completely hide navigation controls and actions */
+        #invoice-print-container button,
+        #invoice-print-container a[href^="javascript:"],
+        #invoice-print-container [role="button"],
+        .print\\\\:hidden,
+        .print-hidden,
+        .no-print {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          height: 0 !important;
+          width: 0 !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+      }
+    \`}</style>
+      <div
+        id="invoice-print-container"
+        className="fixed inset-0 z-[200] bg-slate-950/75 backdrop-blur-md p-4 overflow-y-auto print:static print:bg-white print:p-0 print:block print:overflow-visible print:backdrop-blur-none flex"
+      >
+        <div className="carbon-paper zigzag-borders border border-[#1a2f52]/10 shadow-2xl w-full max-w-lg m-auto print:m-0 print:rounded-none print:shadow-none print:max-w-full invoice-body flex flex-col relative overflow-hidden text-[#1a2f52] font-mono pt-12 pb-12 px-6 sm:px-8 select-text">
+          
+          {/* Tear-off look design element at the top */}
+          <div className="h-1 bg-[repeating-linear-gradient(90deg,currentColor,currentColor_10px,transparent_10px,transparent_20px)] text-[#1a2f52]/20 shrink-0 print:hidden mb-4"></div>
+
+          {/* Controls Bar */}
+          <div className="p-3 mb-4 rounded-xl border border-[#1a2f52]/15 flex justify-between items-center bg-white/50 print:hidden shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="font-extrabold text-[10px] uppercase tracking-wide">
+                {order.status === "delivered" 
+                  ? (lang === "sw" ? "Risiti Rasmi ya EFD" : "EFD Official Receipt") 
+                  : (lang === "sw" ? "Ankara ya EFD" : "EFD Tax Invoice")}
+              </span>
+            </div>
+            <div className="flex gap-1.5">
+              <button
+                onClick={onClose}
+                className="px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
+              >
+                <ChevronLeft size={12} /> Rudi
+              </button>
+              <button
+                onClick={handlePrint}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
+              >
+                🖨️ Print Doc
+              </button>
+            </div>
+          </div>
+
+          {/* Printable Sheet */}
+          <div className="flex-1 flex flex-col gap-4 justify-between min-h-0 print:min-h-0 relative">
+            
+            {/* Ambient Watermark Background for carbon look */}
+            <div className="absolute inset-x-0 top-1/4 bottom-1/4 pointer-events-none flex items-center justify-center opacity-[0.04] overflow-hidden -z-10 select-none">
+              <img
+                src={logoSrc}
+                alt="Watermark"
+                className="w-64 object-contain rotate-12 filter contrast-200 saturate-50"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+
+            <div className="space-y-4">
+              
+              {/* Centered Receipt Header info */}
+              <div className="text-center space-y-1">
+                {logoSrc && (
+                  <div className="flex justify-center mb-2">
+                    <img 
+                      src={logoSrc} 
+                      alt="Stamp" 
+                      className="h-10 object-contain filter grayscale contrast-150 saturate-50"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                )}
+                <div className="font-bold text-sm tracking-widest text-[#1a2f52]">
+                  {inv.companyName?.toUpperCase() || "ORBI SHOP HQ"}
+                </div>
+                {inv.address && <div className="text-[10px] text-[#2c4063]">{inv.address.toUpperCase()}</div>}
+                <div className="text-[9px] text-[#2c4063] space-y-0.5 justify-center flex flex-wrap gap-x-3">
+                  {inv.phone && <span>TEL: {inv.phone}</span>}
+                  {inv.email && <span>EMAIL: {inv.email.toUpperCase()}</span>}
+                </div>
+              </div>
+
+              {/* Dividing Line */}
+              <div className="text-center text-[#1a2f52]/40 my-1 tracking-widest text-[9px] select-none">
+                * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+              </div>
+
+              {/* Document Type Label */}
+              <div className="text-center space-y-0.5 pb-1">
+                <h1 className="text-sm font-black tracking-wider text-[#1a2f52] uppercase">
+                  {order.status === "delivered" 
+                    ? "RISIT HALALI YA MAPIPO" 
+                    : (lang === "sw" ? "ANKARA YA KODI (PRO-FORMA INVOICE)" : "PRO-FORMA TAX INVOICE")}
+                </h1>
+              </div>
+
+              {/* Dividing Line */}
+              <div className="text-center text-[#1a2f52]/40 my-1 tracking-widest text-[9px] select-none">
+                ==========================================================
+              </div>
+
+              {/* ONE ROW Seller and Customer Info to Save Space & Print Beautifully */}
+              <div className="grid grid-cols-2 gap-3 text-[10px] leading-relaxed border-b border-dashed border-[#1a2f52]/20 pb-2">
+                {/* Column 1: Customer Details */}
+                <div className="space-y-0.5">
+                  <div className="text-[8px] font-bold text-[#2c4063] tracking-wider uppercase">MNUNUZI / BUYER:</div>
+                  <div className="font-extrabold text-[#1a2f52]">{order.customerDetails.name.toUpperCase()}</div>
+                  {order.customerDetails.phone && <div>TEL: {order.customerDetails.phone}</div>}
+                  {order.customerDetails.address && <div className="text-[9px]">LOC: {order.customerDetails.address.toUpperCase()}</div>}
+                </div>
+
+                {/* Column 2: Order Metadata */}
+                <div className="space-y-0.5 text-right border-l border-dashed border-[#1a2f52]/20 pl-3">
+                  <div className="text-[8px] font-bold text-[#2c4063] tracking-wider uppercase">ODA / ORDER DETAILS:</div>
+                  <div className="font-bold">ODA ID: #{order.id.substring(0, 10).toUpperCase()}</div>
+                  <div>DATE: {new Date(order.date).toLocaleDateString("sw-TZ")}</div>
+                  <div>TIME: {new Date(order.date).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}</div>
+                </div>
+              </div>
+
+              {/* Transaction / Payment Memo Strip */}
+              <div className="grid grid-cols-2 gap-2 bg-white/30 border border-[#1a2f52]/15 text-[9px] p-2 rounded">
+                <div>
+                  <span className="text-slate-500 block uppercase">NJIA YA MALIPO / PAY VIA:</span>
+                  <strong className="text-[#1a2f52] block font-black uppercase">{order.paymentMethodName?.toUpperCase() || order.paymentMethod?.toUpperCase()}</strong>
+                </div>
+                {order.paymentReference && (
+                  <div className="text-right">
+                    <span className="text-slate-500 block uppercase">REJEA / REF NO:</span>
+                    <strong className="text-[#1a2f52] block font-black uppercase">{order.paymentReference.toUpperCase()}</strong>
+                  </div>
+                )}
+                <div className="col-span-2 pt-1.5 mt-1 border-t border-dashed border-[#1a2f52]/10 flex justify-between items-center text-[9px]">
+                  <span className="text-slate-500 uppercase">HALI YA MALIPO / PROCESS STATE:</span>
+                  {order.status === "delivered" ? (
+                    <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[8px] font-bold bg-emerald-200/50 text-emerald-800 border border-emerald-400 uppercase tracking-wide">
+                      IMEPOKELEWA / PAID
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[8px] font-bold bg-amber-200/50 text-[#1a2f52] border border-amber-450 uppercase tracking-wide animate-pulse">
+                      HAUJALIPWA / UNPAID
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* EFD Billing details block - Only show for unpaid/pro-forma invoices, hide on paid receipts */}
+              {order.status !== "delivered" && (
+                <div className="bg-orange-500/[0.04] rounded border border-orange-500/15 p-2 text-[9px] leading-relaxed">
+                  <div className="font-extrabold text-[8px] text-orange-950 uppercase tracking-widest mb-0.5">
+                    {lang === "sw" ? "JINSI YA KUKAMILISHA MALIPO (PAYMENT PROCESS):" : "BILLING PAYMENT INSTRUCTION:"}
+                  </div>
+                  <div className="whitespace-pre-line text-[#2c4063]">
+                    {(() => {
+                      const opts = inv.paymentOptions || [];
+                      const method = opts.find((po: any) => po.id === order.paymentMethod);
+                      if (method) return method.details.toUpperCase();
+
+                      const methodByName = opts.find(
+                        (po: any) => po.name === order.paymentMethodName || po.name === order.paymentMethod
+                      );
+                      if (methodByName) return methodByName.details.toUpperCase();
+
+                      if (order.paymentMethod === "bank") return (inv.bankPaymentDetails || "Benki").toUpperCase();
+                      if (order.paymentMethod === "mobile") return (inv.mobilePaymentDetails || "Simu").toUpperCase();
+
+                      if (opts.length > 0) {
+                        return opts.map((po: any) => \`\${po.name.toUpperCase()}:\\n\${po.details.toUpperCase()}\`).join("\\n");
+                      }
+                      return "TAFADHALI WASILIANA NASI KUPITIA TELEPHONE ILI KUKAMILISHA MALIPO.";
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {/* Items List - Compact line displays to simulate real roll cash receipt */}
+              <div className="space-y-1 bg-white/20 p-2.5 rounded border border-[#1a2f52]/10">
+                <div className="text-[8px] font-bold text-[#2c4063] tracking-wider uppercase mb-1">BIDHAA ZILIZOMUNULIWA / PURCHASED ITEMS:</div>
+                <div className="border-t border-[#1a2f52]/20 my-1"></div>
+                {order.items.map((item, idx) => {
+                  const itemPid = item.productId || (item as any).id;
+                  const associatedProd = productsList.find(p => p.id === itemPid);
+                  const associatedSeller = associatedProd?.sellerId 
+                    ? sellersList.find(s => s.id === associatedProd.sellerId) 
+                    : null;
+
+                  return (
+                    <div key={idx} className="flex justify-between items-start text-[10px] py-1 border-b border-dashed border-[#1a2f52]/10 last:border-b-0 leading-tight">
+                      <div className="flex-1 pr-4">
+                        <div className="font-black text-[#1a2f52] uppercase">{item.name}</div>
+                        {associatedSeller && (
+                          <span className="text-[8px] text-orange-750 font-bold tracking-wide block mt-0.5">
+                            S: {associatedSeller.name.toUpperCase()}
+                          </span>
+                        )}
+                        <div className="text-[9px] text-[#2c4063] mt-0.5">
+                          {item.quantity} X {formatCurrency(item.price)}
+                        </div>
+                      </div>
+                      <div className="text-right font-black text-[#1a2f52] shrink-0">
+                        {formatCurrency(item.price * item.quantity)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Totals summation display with double-underlines */}
+              <div className="space-y-1.5 text-[10px]">
+                <div className="flex justify-between">
+                  <span className="text-[#2c4063] uppercase">{lang === "sw" ? "Jumla ya Bidhaa (Subtotal):" : "Subtotal Value:"}</span>
+                  <span className="font-bold text-[#1a2f52]">{formatCurrency(order.total)}</span>
+                </div>
+                <div className="flex justify-between text-[#2c4063] text-[9px] uppercase">
+                  <span>VAT (Category A - 18% inclusive):</span>
+                  <span>{formatCurrency(Math.round(order.total * 0.1525))}</span>
+                </div>
+
+                {/* Double Border Dividing strip */}
+                <div className="border-t-2 border-double border-[#1a2f52]/40 my-1"></div>
+                <div className="flex justify-between items-center py-1 bg-white/40 px-2 rounded-md">
+                  <span className="font-black text-[#1a2f52] uppercase text-[9px] tracking-tight">{lang === "sw" ? "JUMLA KUU (GRAND TOTAL):" : "TOTAL INC TAX (GRAND TOTAL):"}</span>
+                  <span className="font-black text-sm text-[#ce2e2e] shrink-0 font-mono">
+                    {formatCurrency(order.total)}
+                  </span>
+                </div>
+                <div className="border-t-2 border-double border-[#1a2f52]/40 my-1"></div>
+              </div>
+
+              {/* Real TRA Verified details printed directly on the receipt roll strip */}
+              {isTraVerified && traInfo ? (
+                <div className="border border-dashed border-[#1a2f52]/30 p-2.5 text-center rounded bg-white/30 text-[9px] my-3 space-y-2">
+                  <div className="font-extrabold text-[9px] tracking-widest text-[#1a2f52] uppercase text-center pb-1 border-b border-dashed border-[#1a2f52]/20">
+                    * RISIT HALALI YA TRA *
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-left text-[#2c4063] leading-normal uppercase">
+                    <div>RCT NUM: <span className="font-bold text-[#1a2f52]">{traInfo.rctnum}</span></div>
+                    <div>Z-NUMBER: <span className="font-bold text-[#1a2f52]">{traInfo.date?.replace(/-/g, "")}</span></div>
+                    <div>DC TODAY: <span className="font-bold text-[#1a2f52]">{traInfo.dc}</span></div>
+                    <div>GC GLOBAL: <span className="font-bold text-[#1a2f52]">{traInfo.gc}</span></div>
+                    <div className="col-span-2 mt-0.5">TAREHE / SAA: <span className="font-bold text-[#1a2f52]">{traInfo.date} {traInfo.time}</span></div>
+                  </div>
+                  <div className="text-[7px] text-[#2c4063]/85 bg-white/50 py-1 px-1.5 rounded font-mono break-all border border-[#1a2f52]/10 my-1 text-left leading-normal uppercase">
+                    VFD SIGN: {traInfo.sign || "TRA-RSA-SIGNATURE-COMPLIANT"}
+                  </div>
+                  <div className="flex flex-col items-center justify-center pt-1.5 border-t border-dashed border-[#1a2f52]/15">
+                    <img
+                      src={\`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=\${encodeURIComponent(\`https://virtual.tra.go.tz/efdmsRctVerify/\${traInfo.rctvnum}\`)}\`}
+                      alt="TRA Verification QR"
+                      className="w-24 h-24 object-contain p-1.5 bg-white rounded border border-[#1a2f52]/15"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="text-[7.5px] text-[#1a2f52] font-extrabold mt-1 tracking-wider uppercase text-center max-w-xs">
+                      EFDMS CODE: {traInfo.rctvnum}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Terms of business - Hide if it is a completed receipt */}
+              {order.status !== "delivered" && inv.terms && (
+                <div className="pt-1.5 text-[9px] leading-relaxed border-b border-dashed border-[#1a2f52]/15 pb-2">
+                  <div className="font-extrabold text-[#2c4063] text-[8px] uppercase tracking-widest mb-0.5">
+                    {lang === "sw" ? "VIGEZO NA MASHARTI:" : "TERMS & CONDITIONS:"}
+                  </div>
+                  <p className="text-[#2c4063] italic leading-snug">{inv.terms.toUpperCase()}</p>
+                </div>
+              )}
+
+            </div>
+
+            {/* Official Footer Orbi Shop Stamp centered */}
+            <div className="border-t border-[#1a2f52]/20 pt-3 text-center flex flex-col items-center justify-center gap-1">
+              <div className="flex items-center gap-1 opacity-70">
+                <img
+                  src="https://limcgmcytzvotxhthqiu.supabase.co/storage/v1/object/public/PLATFROM%20STOCKS/Platform%20Logos/OrbiShop_Logo_Blue.png"
+                  alt="Orbi logo"
+                  className="h-3.5 object-contain filter grayscale contrast-200"
+                  referrerPolicy="no-referrer"
+                />
+                <span className="font-extrabold text-[9px] tracking-tight text-[#1a2f52] uppercase font-bold">Orbi Shop HQ</span>
+              </div>
+              <a 
+                href="https://shop.orbifinancial.com" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-[8px] font-black text-[#2c4063]/60 hover:text-[#2c4063] transition tracking-widest decoration-none"
+              >
+                SHOP.ORBIFINANCIAL.COM
+              </a>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </>\`;
+
+const before = content.substring(0, startIdx);
+const after = content.substring(endIdx);
+const newContent = before + newBody + after;
+
+fs.writeFileSync(path, newContent);
+console.log("Updated ClientApp.tsx via direct Node replacement");

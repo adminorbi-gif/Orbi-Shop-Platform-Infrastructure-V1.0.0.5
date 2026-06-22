@@ -1,0 +1,457 @@
+    <div className="absolute inset-0 pointer-events-none select-none overflow-hidden transition-all duration-1000 z-0">
+      <style dangerouslySetInnerHTML={{ __html: animationStyles }} />
+      {bgList.map((bg, idx) => {
+        const isCurrent = idx === currentIndex;
+        const isPrev = idx === prevIndex;
+--
+          </div>
+          <div className="p-1.5 space-y-1">
+            {options.map(opt => (
+              <button
+                key={opt.id}
+--
+    const filteredHero = promos
+      .filter((p) => p.title.startsWith("[HERO] "))
+      .map((p) => ({ ...p, title: p.title.replace("[HERO] ", "") }));
+    return filteredHero.sort((a, b) => {
+      const wA = shuffleWeights[a.id] || 0.5;
+--
+        // Safe, concurrent-friendly server registration of views
+        await Promise.all(
+          uncounted.map((adObj) =>
+            fetch("/api/ads/track", {
+              method: "POST",
+--
+          )
+        );
+        setCountedAds((prev) => [...prev, ...uncounted.map((u) => u.id)]);
+      } catch (err) {
+        console.error("Error writing ad impression:", err);
+--
+    });
+
+    const proSellerIds = new Set(sellers.filter(s => s.isPro).map(s => s.id));
+    
+    // Prioritize products from pro sellers, then fallback to others
+--
+    const loyaltyAds: any[] = [];
+
+    const mappedSponsorAds = activeMarketplaceAds.map((ad) => ({
+      id: ad.id,
+      type: "sponsor" as const,
+--
+
+    return combined
+      .map((ad) => {
+        let score = hashString(visitorId + "-" + ad.id);
+        if (selectedNiche && selectedNiche !== "Zote") {
+--
+      })
+      .sort((a, b) => a.score - b.score)
+      .map((x) => x.ad);
+  }, [activeMarketplaceAds, selectedNiche, lang, visitorId]);
+
+--
+    if (!products.length) return [];
+    return recentProductIds
+      .map((id) => products.find((p) => p.id === id))
+      .filter(Boolean) as Product[];
+  }, [recentProductIds, products]);
+--
+    ...(systemNiches.length > 0
+      ? systemNiches
+      : Array.from(new Set(products.map((p) => p.niche || "Mengineyo"))).map(
+          (n) => ({ name: n, icon: "Globe" }),
+        )),
+--
+      sellers
+        .filter((s) => s.status !== "frozen")
+        .map((s) => {
+          const desc = (s.description || "").toLowerCase();
+          const name = (s.name || "").toLowerCase();
+--
+                (p.niche || "Mengineyo") === selectedNiche,
+            )
+            .map((p) => p.category),
+          ...((selectedNiche === "Zote" && !viewSeller) ? dynamicSellerCategories : [])
+        ]
+--
+      popularCategories: Object.entries(catCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map((entry) => entry[0])
+        .filter((c) => c && c !== "Zote")
+        .slice(0, 4),
+      popularSearches: Object.entries(tagCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map((entry) => entry[0])
+        .slice(0, 5),
+    };
+--
+    if (filtered.length === 0 && committedSearch && committedSearch.trim().length > 0) {
+      const relaxed = matchedProducts
+        .map(p => ({
+          p,
+          score: BilingualSearchEngine.getRelevanceScore(p, committedSearch, expandedKeywords)
+--
+        .filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .map(item => item.p);
+      setMoreSimilarSuggestions(relaxed.slice(0, 12));
+    } else {
+--
+    if (!products.length) return [];
+    return [...products]
+      .map((p) => {
+        let score = 0;
+        if (prefs.categories[p.category])
+--
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map((x) => x.p)
+      .slice(0, 5); // top 5
+  }, [products, prefs, shuffleWeights]);
+--
+
+    const itemsWithSales = [...products]
+      .map((p) => ({ p, sales: salesMap[p.id] || 0 }))
+      .filter((x) => x.sales > 0)
+      .sort((a, b) => b.sales - a.sales)
+      .map((x) => x.p);
+
+    // Get up to top 15 bestselling items, then randomly shuffle and select 5 to keep content fresh on reload
+--
+      if (ex) {
+        if (ex.quantity >= p.stock) return prev;
+        return prev.map((i) =>
+          i.product.id === p.id ? { ...i, quantity: i.quantity + 1 } : i,
+        );
+--
+  const updateQuantity = (id: string, delta: number) => {
+    setCart((prev) =>
+      prev.map((item) => {
+        if (item.product.id === id) {
+          const newQ = item.quantity + delta;
+--
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {expandedKeywords.map((kw, idx) => (
+                <button
+                  key={idx}
+--
+              </div>
+              <div className="space-y-1">
+                {suggestions.map((p) => (
+                  <button
+                    key={p.id}
+--
+                </div>
+                <div className="flex flex-wrap gap-2 px-1">
+                  {searchHistory.map((term) => (
+                    <button
+                      key={term}
+--
+                </div>
+                <div className="flex flex-wrap gap-2 px-1">
+                  {finalPopularSearches.map((tag) => (
+                    <button
+                      key={tag}
+--
+                </div>
+                <div className="flex flex-wrap gap-2 px-1">
+                  {popularCategories.map((cat) => (
+                    <button
+                      key={cat}
+--
+                            <button
+                              onClick={() => {
+                                const allIds = notifications.map((n) => n.id);
+                                saveReadNotificationIds(allIds);
+                              }}
+--
+                        ) : (
+                          <div className="space-y-2 mt-1 max-h-[290px] overflow-y-auto pr-1">
+                            {notifications.map((n) => {
+                              const isRead = readNotificationIds.includes(n.id);
+                              return (
+--
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
+              {niches.map((n: Niche) => {
+                const Icon = iconMap[n.icon] || Globe;
+                const isSelected = selectedNiche === n.name;
+--
+                  </h3>
+                  <div className="flex overflow-x-auto gap-3 no-scrollbar pb-1.5 w-full">
+                     {megaMenuProducts.map(p => (
+                       <button
+                         key={p.id}
+--
+
+                        <div className="flex gap-2.5 overflow-x-auto pb-4 scrollbar-none snap-x flex-nowrap -mx-2 px-2">
+                          {topDealsProducts.map((p) => {
+                            const pSeller = sellers.find(s => s.id === p.sellerId);
+                            const hasDiscount = p.oldPrice && p.oldPrice > p.price;
+--
+                        {/* Slide track */}
+                        <div className="flex gap-2.5 overflow-x-auto pb-4 scrollbar-none snap-x flex-nowrap -mx-2 px-2">
+                          {newArrivalsProducts.map((p) => {
+                            const pSeller = sellers.find(s => s.id === p.sellerId);
+                            return (
+--
+                        {/* Slide track */}
+                        <div className="flex gap-2.5 overflow-x-auto pb-4 scrollbar-none snap-x flex-nowrap -mx-2 px-2">
+                          {proSellerProducts.map((p) => {
+                            const pSeller = sellers.find(s => s.id === p.sellerId);
+                            return (
+--
+                        <div className="flex items-center gap-6">
+                          {isLoading
+                            ? Array.from({ length: 4 }).map((_, i) => (
+                                <div
+                                  key={i}
+--
+                                ></div>
+                              ))
+                            : categories.map((c: any) => (
+                                <button
+                                  key={c}
+--
+                            </h3>
+                            <div className="flex overflow-x-auto gap-3 pb-2 no-scrollbar w-full">
+                               {megaMenuProducts.slice(0, 4).map(p => (
+                                 <button
+                                   key={p.id}
+--
+                  {isLoading ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-9 3xl:grid-cols-10 gap-1.5 py-1 sm:gap-2">
+                      {Array.from({ length: 12 }).map((_, i) => (
+                        <ProductSkeleton key={i} />
+                      ))}
+--
+                            >
+                              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-none snap-x snap-mandatory flex-nowrap scroll-smooth -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+                                {sortedAdsList.map((ad) => (
+                                  <div
+                                    key={ad.id}
+--
+                          {/* Similar Products Grid */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-9 3xl:grid-cols-10 gap-1.5 py-1 sm:gap-2">
+                            {similarSuggestions.map((p) => {
+                              const pSeller = sellers.find((s) => s.id === p.sellerId);
+                              return (
+--
+                          textEn: "Show me carrier pickup stations and costs" 
+                        }
+                      ].map((item, keyIdx) => {
+                        const promptText = lang === 'sw' ? item.textSw : item.textEn;
+                        return (
+--
+                ) : (
+                  <div className="space-y-3.5">
+                    {aiChatHistory.map((chat, idx) => {
+                      const isUser = chat.role === "user";
+                      return (
+--
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
+                {cart.map((item, idx) => (
+                  <div
+                    key={idx}
+--
+                  </button>
+                  <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-0.5">
+                    {p.images.map((_, i) => (
+                      <button
+                        key={i}
+--
+          {p.images.length > 1 && (
+            <div className="flex gap-3 mt-8 overflow-x-auto max-w-full pb-4 px-4 scrollbar-hide">
+              {p.images.map((img, i) => (
+                <button
+                  key={i}
+--
+      {images.length > 1 && (
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+          {images.map((_, i) => (
+            <button
+              key={i}
+--
+          {/* Indicators dots */}
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-20 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md">
+            {promos.map((_, i) => (
+              <button
+                key={i}
+--
+                  <div className="text-[8px] font-bold text-[#2c4063] tracking-wider uppercase mb-1">BIDHAA ZILIZOMUNULIWA / ITEMS:</div>
+                  <div className="border-t border-[#1a2f52]/20 my-1"></div>
+                  {order.items.map((item, idx) => {
+                    const itemPid = item.productId || (item as any).id;
+                    const associatedProd = productsList.find(p => p.id === itemPid);
+--
+                        if (opts.length > 0) {
+                          return opts
+                            .map((po: any) => `${po.name}:\n${po.details}`)
+                            .join("\n\n");
+                        }
+--
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-sm">
+                      {order.items.map((item, idx) => {
+                        const itemPid = item.productId || (item as any).id;
+                        const associatedProd = productsList.find(p => p.id === itemPid);
+--
+            action: "checkout_complete",
+            orderTotal: finalTotal,
+            purchasedProducts: cart.map((item: any) => ({
+              id: item.product.id,
+              name: item.product.name,
+--
+                          </p>
+                          <div className="grid grid-cols-1 gap-1.5">
+                            {unused.map((cpn: any) => {
+                              const isActive = appliedCoupon?.code === cpn.code;
+                              const potentialSave = getPotentialSavings(cpn);
+--
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {used.map((cpn: any) => (
+                              <div
+                                key={cpn.code}
+--
+                          { label: "75%", fraction: 0.75 },
+                          { label: "100%", fraction: 1.0 },
+                        ].map((preset) => {
+                          const maxRedeemableVal = Math.min(userPoints, cartThresholds.maxAllowedPointsToRedeem);
+                          const targetPoints = Math.round(maxRedeemableVal * preset.fraction);
+--
+                        { id: 'mwanza-capri', label: 'Mwanza', x: 90, y: 45 },
+                        { id: 'dodoma-cath', label: 'Dodoma', x: 160, y: 115 }
+                      ].map((p) => {
+                        const hub = [
+                          { id: 'dar-kariakoo', address: 'Kariakoo Hub - Dar es Salaam, Mtaa wa Swahili, Plot 42' },
+--
+                      { id: 'mwanza-capri', shortLabelSw: 'Mwanza Town', shortLabelEn: 'Mwanza Capri', address: 'Capri Point Hub - Mwanza City, Lake Zone Area', cost: 8000 },
+                      { id: 'dodoma-cath', shortLabelSw: 'Dodoma Hub', shortLabelEn: 'Dodoma Capital', address: 'Capital Cathedral Hub - Dodoma, Cathedral Hill, Uhuru Way', cost: 5000 }
+                    ].map(opt => {
+                      const isSelected = address === opt.address;
+                      return (
+--
+                >
+                  {options.length > 0 ? (
+                    options.map((o: any) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+--
+
+  const handleSelectAll = () => {
+    const allIds = chatBubbles.map((b) => b.id);
+    setSelectedBubbleIds(new Set(allIds));
+  };
+--
+        return prev
+          .filter((m) => !entireDeletes.has(m.id))
+          .map((m) => {
+            if (replyClears.has(m.id)) {
+              return { ...m, adminReply: undefined };
+--
+        const mapped: Order = {
+          id: singleOrder.id,
+          items: (singleOrder.items || []).map((i: any) => ({
+            productId: i.product_id,
+            name: i.name,
+--
+          return isFromAdmin;
+        })
+        .map((m) => m.id);
+
+      const unreadIds = adminMsgIds.filter((id) => !localReadIds.includes(id));
+--
+                </div>
+              ) : (
+                localOrders.map((o) => (
+                  <div
+                    key={o.id}
+--
+                          {lang === "sw" ? "Bidhaa:" : "Items:"}
+                        </p>
+                        {o.items.map((item) => (
+                          <div
+                            key={item.productId}
+--
+                                      
+                                      // Update local states immediately
+                                      setLocalOrders((prev) => prev.map((item) => item.id === o.id ? { ...item, status: "delivered" as const } : item));
+                                      
+                                      // Add notification message for admin
+--
+                            textEn: "Show me carrier pickup stations and costs" 
+                          }
+                        ].map((item, keyIdx) => {
+                          const promptText = lang === 'sw' ? item.textSw : item.textEn;
+                          return (
+--
+                  ) : (
+                    <div className="space-y-3.5 animate-fade-in">
+                      {aiChatHistory.map((chat, idx) => {
+                        const uniqueKey = `${chat.role}-${chat.date}-${idx}`;
+                        const isUser = chat.role === "user";
+--
+                      </div>
+
+                      {chatBubbles.map((bubble, idx) => {
+                        const isCustomer = bubble.sender === "customer";
+                        const bubbleDate = new Date(
+--
+                      </span>
+                    </div>
+                    {filteredTagProducts.map((prod) => (
+                      <button
+                        key={prod.id}
+--
+                          
+                          <div className="max-h-36 overflow-y-auto border border-slate-100 rounded-xl p-2.5 bg-slate-50 divide-y divide-slate-100">
+                            {parsedReceiptData.items && parsedReceiptData.items.map((it: any, k: number) => (
+                              <div key={k} className="flex justify-between py-1.5 text-xs font-semibold text-slate-700">
+                                <span>{it.name} <span className="text-slate-400">x{it.quantity || 1}</span></span>
+--
+                  {rewardsCategory === "available" ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5 font-sans font-semibold">
+                      {redeemableVouchers.map((v) => {
+                        const sufficient = pPoints >= v.points;
+                        const progressPct = Math.min(100, Math.floor((pPoints / v.points) * 100));
+--
+                          {coupons
+                            .filter(c => c.targetCustomer === userId || c.target_customer === userId)
+                            .map((c) => (
+                              <div 
+                                key={c.id} 
+--
+
+                    {orders.filter(o => o.customerId === userId || o.customer_id === userId).length > 0 ? (
+                      orders.filter(o => o.customerId === userId || o.customer_id === userId).map((o) => {
+                        const pointsEarned = Math.floor((o.total * currentPointsRate) / 1000);
+                        if (pointsEarned <= 0) return null;
+--
+                        { id: 'mwanza-capri', label: 'Mwanza', x: 90, y: 45 },
+                        { id: 'dodoma-cath', label: 'Dodoma', x: 160, y: 115 }
+                      ].map((p) => {
+                        return (
+                          <g key={p.id} className="cursor-pointer group">
+--
+                        { id: 'mwanza-capri', nameSw: 'Mwanza Town (Capri Point)', nameEn: 'Mwanza (Capri Point Hub)', address: 'Capri Point Hub - Mwanza City, Lake Zone Area', cost: 8000, daysSw: 'Siku 2 - 3', daysEn: '2 - 3 Days' },
+                        { id: 'dodoma-cath', nameSw: 'Dodoma Capital (Cathedral)', nameEn: 'Dodoma (Capital Cathedral)', address: 'Capital Cathedral Hub - Dodoma, Cathedral Hill, Uhuru Way', cost: 5000, daysSw: 'Siku 1 - 2', daysEn: '1 - 2 Days' }
+                      ].map((hub) => (
+                        <div key={hub.id} className="p-3 rounded-xl border border-slate-150 bg-white hover:border-slate-350 transition flex flex-col justify-between shadow-xs leading-none">
+                          <div className="flex justify-between items-start mb-1.5">
+--
+              </div>
+              <div className="space-y-1 max-h-36 overflow-y-auto font-sans">
+                {selectedConfirmOrder.items.map((it, idx) => (
+                  <div key={idx} className="flex justify-between text-xs text-slate-600">
+                    <span className="truncate max-w-[200px] font-medium">{it.name}</span>
+--
+                    
+                    // Update local states immediately
+                    setLocalOrders((prev) => prev.map((o) => o.id === selectedConfirmOrder.id ? { ...o, status: "delivered" as const } : o));
+                    if (trackedOrder && trackedOrder.id === selectedConfirmOrder.id) {
+                      setTrackedOrder((prev: any) => prev ? { ...prev, status: "delivered" as const } : null);
