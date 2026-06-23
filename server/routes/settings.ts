@@ -280,7 +280,7 @@ router.post("/niches/suggest", async (req, res) => {
     });
 
     const prompt = `You are an expert product categorizer and eCommerce catalog specialist at Orbi Shop.
-Analyze the following list of unorganized or generic product listings. Recommend an appropriate main niche and sub-category for each product to make the store easier to browse.
+Analyze the following list of unorganized or generic product listings. Recommend an appropriate main niche, category, and sub-category (family) for each product to make the store easier to browse.
 Use human-friendly, standard market niches (e.g. Fashion & Apparel, Groceries, Sports & Fitness, Pet Supplies, Home & Decor, Books & Stationery, Tools, etc.) instead of default categories.
 
 Products to organize:
@@ -289,8 +289,9 @@ ${JSON.stringify(scanItems, null, 2)}
 Strict constraints for your recommendation:
 1. Provide a "suggestedNiche" (the top-level niche name, e.g. "Beauty & Health")
 2. Provide a "suggestedCategory" (the specific subcategory in that niche, e.g. "Skin Care")
-3. Provide a brief explanation in 'reasoning' (1-2 sentences, bilingual Swahili/English)
-4. Provide a "suggestedNicheIcon" which must be strictly selected from this exact list of valid Lucide icon names:
+3. Provide a "suggestedFamily" (the specific sub-subcategory / brand family, e.g. "Moisturizers" or "Hisense")
+4. Provide a brief explanation in 'reasoning' (1-2 sentences, bilingual Swahili/English)
+5. Provide a "suggestedNicheIcon" which must be strictly selected from this exact list of valid Lucide icon names:
 ${validIcons.join(', ')}
 
 Return the output as a valid JSON object matching the requested schema structure.`;
@@ -312,10 +313,11 @@ Return the output as a valid JSON object matching the requested schema structure
                   productName: { type: Type.STRING },
                   suggestedNiche: { type: Type.STRING },
                   suggestedCategory: { type: Type.STRING },
+                  suggestedFamily: { type: Type.STRING },
                   reasoning: { type: Type.STRING },
                   suggestedNicheIcon: { type: Type.STRING }
                 },
-                required: ["productId", "productName", "suggestedNiche", "suggestedCategory", "reasoning", "suggestedNicheIcon"]
+                required: ["productId", "productName", "suggestedNiche", "suggestedCategory", "suggestedFamily", "reasoning", "suggestedNicheIcon"]
               }
             }
           },
@@ -355,9 +357,9 @@ router.post("/niches/apply-suggestions", async (req, res) => {
     const existingNiches = tblNiches || [];
 
     for (const item of suggestions) {
-      const { productId, suggestedNiche, suggestedCategory, suggestedNicheIcon } = item;
+      const { productId, suggestedNiche, suggestedCategory, suggestedFamily, suggestedNicheIcon } = item;
 
-      const dbCategory = `${suggestedNiche}::${suggestedCategory}`;
+      const dbCategory = `${suggestedNiche}::${suggestedCategory}::${suggestedFamily || ''}`;
       await getSupabase(req).from('products').update({ category: dbCategory }).eq('id', productId);
 
       const foundInLegacy = sysNichesList.find((n: any) => n.name.toLowerCase() === suggestedNiche.toLowerCase());
@@ -365,13 +367,27 @@ router.post("/niches/apply-suggestions", async (req, res) => {
         sysNichesList.push({
           name: suggestedNiche,
           icon: suggestedNicheIcon || "Smartphone",
-          categories: [suggestedCategory]
+          categories: [{ name: suggestedCategory, families: suggestedFamily ? [suggestedFamily] : [] }]
         });
       } else {
-        const cats = foundInLegacy.categories || [];
-        if (!cats.includes(suggestedCategory)) {
-          cats.push(suggestedCategory);
+        const cats = Array.isArray(foundInLegacy.categories) ? foundInLegacy.categories : [];
+        const existingCat = cats.find((c: any) => (typeof c === 'string' ? c : c.name).toLowerCase() === suggestedCategory.toLowerCase());
+        
+        if (!existingCat) {
+          cats.push({ name: suggestedCategory, families: suggestedFamily ? [suggestedFamily] : [] });
           foundInLegacy.categories = cats;
+        } else if (suggestedFamily) {
+          if (typeof existingCat === 'string') {
+            // Migration: Convert string category to object if needed
+            const idx = cats.indexOf(existingCat);
+            cats[idx] = { name: existingCat, families: [suggestedFamily] };
+          } else {
+            const fams = existingCat.families || [];
+            if (!fams.includes(suggestedFamily)) {
+              fams.push(suggestedFamily);
+              existingCat.families = fams;
+            }
+          }
         }
       }
 

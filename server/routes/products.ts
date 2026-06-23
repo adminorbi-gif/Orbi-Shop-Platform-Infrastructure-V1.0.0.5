@@ -13,8 +13,9 @@ router.get("/", async (req, res) => {
     const mapped = (data || []).map(p => {
       const catRaw = typeof p.category === 'string' ? p.category : '';
       const parts = catRaw.split('::');
-      const niche = parts.length > 1 ? parts[0] : 'Electronics';
-      const category = parts.length > 1 ? parts.slice(1).join('::') : catRaw;
+      const niche = parts.length > 0 ? parts[0] : 'Electronics';
+      const category = parts.length > 1 ? parts[1] : '';
+      const family = parts.length > 2 ? parts[2] : '';
 
       const tagsList = Array.isArray(p.tags) ? p.tags : [];
       const sellerTag = tagsList.find((t: string) => typeof t === 'string' && t.startsWith('seller_id:'));
@@ -31,6 +32,7 @@ router.get("/", async (req, res) => {
         name: p.name || 'Unnamed',
         niche: niche,
         category: category,
+        family: family,
         price: Number(p.price) || 0,
         oldPrice: p.old_price ? Number(p.old_price) : null,
         stock: Number(p.stock) || 0,
@@ -76,7 +78,7 @@ router.post("/", async (req, res) => {
 
       const payload: any = {
         name: product.name,
-        category: `${product.niche || 'Electronics'}::${product.category || ''}`,
+        category: `${product.niche || 'Electronics'}::${product.category || ''}::${product.family || ''}`,
         price: product.price,
         old_price: product.oldPrice === undefined ? null : product.oldPrice,
         stock: product.stock,
@@ -257,7 +259,12 @@ router.post("/ai-suggest-niche", async (req, res) => {
     const ai = getGemini();
 
     const formattedNiches = (availableNiches || []).map((n: any) => {
-      return `${n.name} (Sub-categories: ${n.categories ? n.categories.join(", ") : "None"})`;
+      const catsInfo = (n.categories || []).map((c: any) => {
+        const catName = typeof c === 'string' ? c : c.name;
+        const families = Array.isArray(c.families) ? c.families.join(", ") : "None";
+        return `${catName} (Families: ${families})`;
+      }).join("; ");
+      return `${n.name} (Categories: ${catsInfo})`;
     }).join("\n");
 
     const prompt = `You are "Orbi AI", an expert product arrangement and e-commerce catalog optimizer.
@@ -265,12 +272,12 @@ Analyze this product:
 - Product Title: "${name}"
 - Product Description: "${description || 'No description provided'}"
 
-Here are the store's currently configured Niches and their respective sub-categories:
+Here are the store's currently configured Niches, Categories, and Families:
 ${formattedNiches || "None configured yet"}
 
 Your goal:
-1. Identify the absolute best Niche and Sub-category match from the existing list above.
-2. If absolutely none of the existing niches or sub-categories fit, suggest a highly accurate custom Niche and Sub-category.
+1. Identify the absolute best Niche, Category, and Family match from the existing list above.
+2. If absolutely none of the existing matches fit, suggest a highly accurate custom Niche, Category, and Family.
 3. Recommend the most appropriate Arrangement Tier based on the price point and exclusivity:
    - "standard": Budget-friendly, basic or standard essential products.
    - "premium": High-quality, artistic, or premium Tier products.
@@ -294,7 +301,8 @@ Your goal:
 Respond with ONLY a raw, complete JSON object. Absolutely no markdown formatting, no \`\`\`json blocks, and no extra text wrapping. The JSON schema must be exactly:
 {
   "suggestedNiche": "The name of the Niche",
-  "suggestedCategory": "The name of the Category/sub-category",
+  "suggestedCategory": "The name of the Category",
+  "suggestedFamily": "The name of the Family/Sub-subcategory",
   "suggestedTier": "standard" | "premium" | "luxury" | "all",
   "suggestedVibe": "romance" | "serenity" | "sunshine" | "mystery" | "nature" | "all",
   "suggestedPresentation": "box" | "wrap" | "glass" | "basket" | "all",

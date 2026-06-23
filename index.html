@@ -23,6 +23,23 @@
     <link rel="icon" type="image/png" href="https://limcgmcytzvotxhthqiu.supabase.co/storage/v1/object/public/PLATFROM%20STOCKS/Platform%20Logos/OrbiShop_Logo_Blue.png" />
     <link rel="apple-touch-icon" href="https://limcgmcytzvotxhthqiu.supabase.co/storage/v1/object/public/PLATFROM%20STOCKS/Platform%20Logos/OrbiShop_Logo_Blue.png" />
     <link rel="canonical" href="https://shop.orbifinancial.com" />
+    <link rel="search" type="application/opensearchdescription+xml" title="Orbi Shop" href="/opensearch.xml" />
+    
+    <!-- AI Crawler Identification and indexing support -->
+    <meta name="ai-agent" content="Orbi Shop Product Engine" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    
+    <!-- Directives for AI Bots to crawl and index products effectively -->
+    <meta name="ia_archiver" content="index, follow" />
+    <meta name="googlebot" content="index, follow" />
+    <meta name="google-extended" content="index, follow" />
+    <meta name="gptbot" content="index, follow" />
+    <meta name="chatgpt-user" content="index, follow" />
+    <meta name="anthropic-ai" content="index, follow" />
+    <meta name="applebot" content="index, follow" />
+    <meta name="applebot-extended" content="index, follow" />
+    <meta name="bingbot" content="index, follow" />
+    
     <meta property="og:url" content="https://shop.orbifinancial.com" />
     <script id="dynamic-seo-schema"></script>
     <script>
@@ -38,10 +55,8 @@
         var isSensitive = searchParams.has('admin') ||
                           window.location.pathname.startsWith('/i');
         if (isSensitive) {
-          var robots = document.createElement('meta');
-          robots.name = 'robots';
-          robots.content = 'noindex, nofollow';
-          document.head.appendChild(robots);
+          var robots = document.querySelector('meta[name="robots"]');
+          if (robots) robots.setAttribute('content', 'noindex, nofollow');
         }
 
         var schemaEl = document.getElementById('dynamic-seo-schema');
@@ -54,7 +69,23 @@
           var productNameSw = searchParams.get('nameSw');
           var productPrice = searchParams.get('price');
           
-          var schemaData;
+          var schemas = [];
+          
+          // 1. Site Search Schema (Always present)
+          schemas.push({
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "Orbi Shop",
+            "url": base + "/",
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": base + "/?q={search_term_string}"
+              },
+              "query-input": "required name=search_term_string"
+            }
+          });
           
           if (productId) {
             // Update Meta Description dynamically for search results
@@ -74,7 +105,7 @@
             document.title = "Bei ya " + baseName + " | Orbi Shop";
 
             // Specific Product Schema for better indexing of product details
-            schemaData = {
+            schemas.push({
               "@context": "https://schema.org",
               "@type": "Product",
               "id": base + "/?productId=" + productId,
@@ -89,10 +120,10 @@
                 "availability": "https://schema.org/InStock",
                 "url": base + "/?productId=" + productId
               }
-            };
+            });
           } else {
             // General Marketplace Schema
-            schemaData = {
+            schemas.push({
               "@context": "https://schema.org",
               "@type": "ItemList",
               "name": "Orbi Shop Marketplace Navigation",
@@ -135,9 +166,9 @@
                   "url": base + "/?track=true"
                 }
               ]
-            };
+            });
           }
-          schemaEl.textContent = JSON.stringify(schemaData, null, 2);
+          schemaEl.textContent = JSON.stringify(schemas, null, 2);
         }
       })();
     </script>

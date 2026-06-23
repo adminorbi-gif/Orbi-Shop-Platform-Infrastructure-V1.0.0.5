@@ -26,6 +26,7 @@ import {
   SellerProfile,
   SubscriptionPlan,
   PromotionalBanner,
+  Category,
 } from "../types";
 import {
   Plus,
@@ -6240,6 +6241,7 @@ function ProductsAdmin({
   const [prodWholesaleTiers, setProdWholesaleTiers] = useState<{ minQty: number; price: number }[]>([]);
   const [niche, setNiche] = useState("");
   const [category, setCategory] = useState("");
+  const [family, setFamily] = useState("");
   const [price, setPrice] = useState("");
   const [oldPrice, setOldPrice] = useState("");
   const [stock, setStock] = useState("");
@@ -6647,6 +6649,7 @@ function ProductsAdmin({
       setName(prod.name);
       setNiche(prod.niche || "Electronics");
       setCategory(prod.category);
+      setFamily(prod.family || "");
       setPrice(prod.price.toString());
       setOldPrice(prod.oldPrice ? prod.oldPrice.toString() : "");
       setStock(prod.stock.toString());
@@ -6674,6 +6677,7 @@ function ProductsAdmin({
       setName("");
       setNiche("");
       setCategory("");
+      setFamily("");
       setPrice("");
       setOldPrice("");
       setStock("");
@@ -6769,6 +6773,7 @@ function ProductsAdmin({
       if (data.success && data.suggestedNiche) {
         setNiche(data.suggestedNiche);
         setCategory(data.suggestedCategory || "");
+        setFamily(data.suggestedFamily || "");
 
         if (data.suggestedTier) {
           setArrangeTier(data.suggestedTier);
@@ -6783,14 +6788,14 @@ function ProductsAdmin({
         const explanation =
           lang === "sw"
             ? data.reasonSwahili ||
-              `Imewekwa chini ya "${data.suggestedNiche} > ${data.suggestedCategory}" mtawalia.`
+              `Imewekwa chini ya "${data.suggestedNiche} > ${data.suggestedCategory}${data.suggestedFamily ? " > " + data.suggestedFamily : ""}" mtawalia.`
             : data.reasonEnglish ||
-              `Selected "${data.suggestedNiche} > ${data.suggestedCategory}" as best fit.`;
+              `Selected "${data.suggestedNiche} > ${data.suggestedCategory}${data.suggestedFamily ? " > " + data.suggestedFamily : ""}" as best fit.`;
 
         showAlert(
           lang === "sw"
-            ? `✓ Orbi AI Organiser:\n• Niche: ${data.suggestedNiche}\n• Kategoria: ${data.suggestedCategory}\n• Tier: ${data.suggestedTier || "all"}\n• Vibe: ${data.suggestedVibe || "all"}\n• Ufungaji: ${data.suggestedPresentation || "all"}\n\nSababu: ${explanation}`
-            : `✓ Orbi AI Organiser:\n• Niche: ${data.suggestedNiche}\n• Category: ${data.suggestedCategory}\n• Tier: ${data.suggestedTier || "all"}\n• Vibe: ${data.suggestedVibe || "all"}\n• Presentation: ${data.suggestedPresentation || "all"}\n\nAnalysis: ${explanation}`,
+            ? `✓ Orbi AI Organiser:\n• Niche: ${data.suggestedNiche}\n• Kategoria: ${data.suggestedCategory}\n• Familia: ${data.suggestedFamily || "N/A"}\n• Tier: ${data.suggestedTier || "all"}\n• Vibe: ${data.suggestedVibe || "all"}\n• Ufungaji: ${data.suggestedPresentation || "all"}\n\nSababu: ${explanation}`
+            : `✓ Orbi AI Organiser:\n• Niche: ${data.suggestedNiche}\n• Category: ${data.suggestedCategory}\n• Family: ${data.suggestedFamily || "N/A"}\n• Tier: ${data.suggestedTier || "all"}\n• Vibe: ${data.suggestedVibe || "all"}\n• Presentation: ${data.suggestedPresentation || "all"}\n\nAnalysis: ${explanation}`,
           "success",
         );
       } else {
@@ -7129,6 +7134,7 @@ function ProductsAdmin({
       name,
       niche,
       category,
+      family: family.trim(),
       price: Number(price),
       oldPrice: oldPrice ? Number(oldPrice) : undefined,
       stock: stockNum,
@@ -7975,18 +7981,8 @@ function ProductsAdmin({
                     onChange={(e) => {
                       const newNiche = e.target.value;
                       setNiche(newNiche);
-                      // Auto populate first sub-category if available to help user
-                      const correspondingNiche = globalNiches.find(
-                        (n) => n.name === newNiche,
-                      );
-                      if (
-                        correspondingNiche?.categories &&
-                        correspondingNiche.categories.length > 0
-                      ) {
-                        setCategory(correspondingNiche.categories[0]);
-                      } else {
-                        setCategory("");
-                      }
+                      setCategory("");
+                      setFamily("");
                     }}
                     required
                     className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 px-4 py-2.5 rounded-xl text-xs font-semibold outline-none focus:border-indigo-600 focus:bg-white transition duration-150 text-slate-800"
@@ -8010,83 +8006,45 @@ function ProductsAdmin({
                   <label className="block text-[11px] font-black uppercase text-slate-400 tracking-wider mb-2 flex items-center gap-1">
                     🏷️ {lang === "sw" ? "Kundi Maalum (Category)" : "Category"}
                   </label>
-
-                  {niche &&
-                  globalNiches.find((n) => n.name === niche)?.categories
-                    ?.length ? (
-                    <div className="space-y-2">
-                      <select
-                        value={
-                          globalNiches
-                            .find((n) => n.name === niche)
-                            ?.categories?.includes(category)
-                            ? category
-                            : "custom"
-                        }
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (val !== "custom") {
-                            setCategory(val);
-                          }
-                        }}
-                        className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 px-4 py-2.5 rounded-xl text-xs font-semibold outline-none focus:border-indigo-600 focus:bg-white transition duration-150 text-slate-800 text-sm"
-                      >
-                        {globalNiches
-                          .find((n) => n.name === niche)
-                          ?.categories?.map((cat) => (
-                            <option key={cat} value={cat}>
-                              {cat}
-                            </option>
-                          ))}
-                        <option value="custom">
-                          --{" "}
-                          {lang === "sw"
-                            ? "Andika Kategoria Nyingine"
-                            : "Type Custom Category"}{" "}
-                          --
+                  <select
+                    value={category}
+                    onChange={(e) => {
+                      setCategory(e.target.value);
+                      setFamily("");
+                    }}
+                    required
+                    className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 px-4 py-2.5 rounded-xl text-xs font-semibold outline-none focus:border-indigo-600 focus:bg-white transition duration-150 text-slate-800"
+                  >
+                    <option value="">-- {lang === "sw" ? "Chagua Kategoria" : "Select Category"} --</option>
+                    {globalNiches
+                      .find((n) => n.name === niche)
+                      ?.categories?.map((cat) => (
+                        <option key={cat.name} value={cat.name}>
+                          {cat.name}
                         </option>
-                      </select>
+                      ))}
+                  </select>
+                </div>
 
-                      <input
-                        type="text"
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                        required
-                        placeholder={
-                          lang === "sw"
-                            ? "Andika kategoria maalum hapa..."
-                            : "Type custom category here..."
-                        }
-                        className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 px-4 py-2.5 rounded-xl text-xs font-semibold outline-none focus:border-indigo-600 focus:bg-white transition duration-150 text-slate-850"
-                      />
-                    </div>
-                  ) : (
-                    <div>
-                      <input
-                        list="categoryList"
-                        type="text"
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                        required
-                        placeholder="Mf. Radio, Viatu, Vipodozi"
-                        className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-indigo-600 focus:bg-white px-4 py-2.5 rounded-xl text-xs font-semibold outline-none transition duration-150 text-slate-800"
-                      />
-                      <datalist id="categoryList">
-                        <option value="TV" />
-                        <option value="Radio" />
-                        <option value="AC" />
-                        <option value="Fridge" />
-                        <option value="Blender" />
-                        <option value="Microwave" />
-                        <option value="Speaker" />
-                        <option value="Laptop" />
-                        <option value="Phone" />
-                        <option value="Fashion" />
-                        <option value="Shoes" />
-                        <option value="Cosmetics" />
-                      </datalist>
-                    </div>
-                  )}
+                <div>
+                  <label className="block text-[11px] font-black uppercase text-slate-400 tracking-wider mb-2 flex items-center gap-1">
+                    🌳 {lang === "sw" ? "Familia ya Bidhaa (Family)" : "Subcategory / Family"}
+                  </label>
+                  <select
+                    value={family}
+                    onChange={(e) => setFamily(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 px-4 py-2.5 rounded-xl text-xs font-semibold outline-none focus:border-indigo-600 focus:bg-white transition duration-150 text-slate-800"
+                  >
+                    <option value="">-- {lang === "sw" ? "Chagua Familia" : "Select Family"} --</option>
+                    {globalNiches
+                      .find((n) => n.name === niche)
+                      ?.categories?.find((c) => c.name === category)
+                      ?.families?.map((fam) => (
+                        <option key={fam} value={fam}>
+                          {fam}
+                        </option>
+                      ))}
+                  </select>
                 </div>
 
                 {/* Arrangement Tier, Vibe, and Wrap/Presentation Style */}
@@ -15328,7 +15286,10 @@ function SettingsAdmin() {
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<any[]>([]);
   const [newNicheName, setNewNicheName] = useState("");
-  const [newNicheCategories, setNewNicheCategories] = useState("");
+  const [nicheCategoriesList, setNicheCategoriesList] = useState<Category[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newFamilyNames, setNewFamilyNames] = useState("");
+  const [editingCategoryIdx, setEditingCategoryIdx] = useState<number | null>(null);
   const [newNicheMode, setNewNicheMode] = useState<"add" | "edit">("add");
   const [newNicheOriginalName, setNewNicheOriginalName] = useState("");
   const [newNicheIcon, setNewNicheIcon] = useState("Smartphone");
@@ -15778,11 +15739,7 @@ function SettingsAdmin() {
     const errors: string[] = [];
     const warnings: string[] = [];
     const name = newNicheName.trim();
-    const rawCats = newNicheCategories;
-    const categories = rawCats
-      .split(",")
-      .map((c) => c.trim())
-      .filter(Boolean);
+    const categories = nicheCategoriesList.map((c) => c.name);
 
     // 1. Check if categories are entered but no niche name is specified (Orphaned categories)
     if (categories.length > 0 && !name) {
@@ -17313,19 +17270,82 @@ function SettingsAdmin() {
                       />
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-                        {isSw
-                          ? "Makundi Ndani Yake (Tenga kwa koma)"
-                          : "Categories (Comma separated)"}
-                      </label>
-                      <input
-                        type="text"
-                        value={newNicheCategories}
-                        onChange={(e) => setNewNicheCategories(e.target.value)}
-                        placeholder="e.g. Men, Women, Kids"
-                        className="w-full bg-white border border-slate-200 hover:border-slate-300 p-3 rounded-2xl text-xs font-semibold outline-none focus:border-slate-900 transition"
-                      />
+                    <div className="space-y-4 p-4 bg-white border border-slate-200 rounded-2xl">
+                      <span className="block text-[10px] font-black uppercase text-slate-500 tracking-wider">
+                        {isSw ? "MAKUNDI NA FAMILIA" : "CATEGORIES & FAMILIES"}
+                      </span>
+
+                      <div className="flex gap-2">
+                        <div className="flex-1 space-y-1.5">
+                          <input
+                            type="text"
+                            value={newCategoryName}
+                            onChange={(e) => setNewCategoryName(e.target.value)}
+                            placeholder={isSw ? "Jina la Kundi (Mf. Simu)" : "Category Name (e.g. Phones)"}
+                            className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs font-semibold outline-none focus:border-slate-900 transition"
+                          />
+                        </div>
+                        <div className="flex-1 space-y-1.5">
+                          <input
+                            type="text"
+                            value={newFamilyNames}
+                            onChange={(e) => setNewFamilyNames(e.target.value)}
+                            placeholder={isSw ? "Familia (Koma: iOS, Android)" : "Families (Comma: iOS, Android)"}
+                            className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs font-semibold outline-none focus:border-slate-900 transition"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!newCategoryName.trim()) return;
+                            const families = newFamilyNames.split(",").map(f => f.trim()).filter(Boolean);
+                            if (editingCategoryIdx !== null) {
+                              const updated = [...nicheCategoriesList];
+                              updated[editingCategoryIdx] = { name: newCategoryName.trim(), families };
+                              setNicheCategoriesList(updated);
+                              setEditingCategoryIdx(null);
+                            } else {
+                              setNicheCategoriesList([...nicheCategoriesList, { name: newCategoryName.trim(), families }]);
+                            }
+                            setNewCategoryName("");
+                            setNewFamilyNames("");
+                          }}
+                          className="bg-slate-900 text-white p-2.5 rounded-xl hover:bg-slate-800 transition shadow-sm"
+                        >
+                          {editingCategoryIdx !== null ? <Check size={16} /> : <Plus size={16} />}
+                        </button>
+                      </div>
+
+                      <div className="space-y-2 max-h-[150px] overflow-y-auto pr-1">
+                        {nicheCategoriesList.map((cat, idx) => (
+                          <div key={idx} className="flex items-center justify-between bg-slate-50 border border-slate-200 p-2.5 rounded-xl">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-black text-slate-800 truncate">{cat.name}</p>
+                              <p className="text-[10px] text-slate-500 truncate">{cat.families.join(", ")}</p>
+                            </div>
+                            <div className="flex gap-1 ml-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingCategoryIdx(idx);
+                                  setNewCategoryName(cat.name);
+                                  setNewFamilyNames(cat.families.join(", "));
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                              >
+                                <Edit size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setNicheCategoriesList(nicheCategoriesList.filter((_, i) => i !== idx))}
+                                className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="space-y-1.5">
@@ -17360,7 +17380,7 @@ function SettingsAdmin() {
                         errors.length === 0 &&
                         warnings.length === 0 &&
                         !newNicheName.trim() &&
-                        !newNicheCategories.trim()
+                        nicheCategoriesList.length === 0
                       ) {
                         return null; // Don't clutter if nothing at all is typed yet
                       }
@@ -17424,10 +17444,7 @@ function SettingsAdmin() {
                       type="button"
                       onClick={async () => {
                         const name = newNicheName.trim();
-                        const categories = newNicheCategories
-                          .split(",")
-                          .map((c) => c.trim())
-                          .filter(Boolean);
+                        const categories = nicheCategoriesList;
                         const icon = newNicheIcon;
 
                         const validator = getNicheValidationInfo();
@@ -17451,7 +17468,7 @@ function SettingsAdmin() {
                               setSysNiches(updated);
                               await db.saveNiches(updated);
                               setNewNicheName("");
-                              setNewNicheCategories("");
+                              setNicheCategoriesList([]);
                             } else {
                               alert("Niche with this name already exists");
                             }
@@ -17484,7 +17501,7 @@ function SettingsAdmin() {
 
                               setNewNicheMode("add");
                               setNewNicheName("");
-                              setNewNicheCategories("");
+                              setNicheCategoriesList([]);
                               setNewNicheOriginalName("");
                             }
                           }
@@ -17514,7 +17531,7 @@ function SettingsAdmin() {
                         onClick={() => {
                           setNewNicheMode("add");
                           setNewNicheName("");
-                          setNewNicheCategories("");
+                          setNicheCategoriesList([]);
                           setNewNicheOriginalName("");
                         }}
                         className="w-full mt-2 bg-slate-100 hover:bg-slate-200 text-slate-600 p-3.5 rounded-2xl text-xs font-black uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-2"
@@ -17616,7 +17633,7 @@ function SettingsAdmin() {
                             {niche.categories &&
                               niche.categories.length > 0 && (
                                 <span className="text-[9px] text-slate-400 font-medium truncate mt-1">
-                                  {niche.categories.join(", ")}
+                                  {niche.categories.map(c => c.name).join(", ")}
                                 </span>
                               )}
                           </div>
@@ -17630,9 +17647,7 @@ function SettingsAdmin() {
                               setNewNicheOriginalName(niche.name);
                               setNewNicheName(niche.name);
                               setNewNicheIcon(niche.icon);
-                              setNewNicheCategories(
-                                niche.categories?.join(", ") || "",
-                              );
+                              setNicheCategoriesList(niche.categories || []);
                               // Scroll to top so the user sees the form
                               window.scrollTo({ top: 0, behavior: "smooth" });
                             }}

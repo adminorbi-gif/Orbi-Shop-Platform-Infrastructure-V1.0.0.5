@@ -1,7 +1,13 @@
+export interface Category {
+  name: string;
+  families: string[];
+}
+
 export interface Niche {
+  id?: string;
   name: string;
   icon: string;
-  categories?: string[];
+  categories: Category[];
 }
 
 export interface ProductFeature {
@@ -92,6 +98,7 @@ export interface Product {
   nameSw?: string;
   niche: string;
   category: string;
+  family?: string;
   price: number;
   oldPrice?: number;
   stock: number;

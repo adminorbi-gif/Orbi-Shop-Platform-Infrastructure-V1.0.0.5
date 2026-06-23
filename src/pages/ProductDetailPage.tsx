@@ -238,6 +238,105 @@ export default function ProductDetailPage({
     return parseKeyAttributes(product.description, product.features);
   }, [product.description, product.features]);
 
+  // SEO: Update Meta Tags and Page Title Dynamically
+  useEffect(() => {
+    if (product) {
+      const productName = product.name;
+      const baseName = lang === "sw" ? (product.nameSw || productName) : productName;
+      const priceDisplay = formatCurrency(product.price);
+      const title = `Bei ya ${baseName} ni ${priceDisplay} | Orbi Shop Tanzania`;
+      const description = `Nunua ${baseName} kwa bei bora ya ${priceDisplay} nchini Tanzania. Bidhaa bora, malipo salama kupitia Orbi Pay, na usafirishaji wa haraka popote Tanzania. Trusted marketplace.`;
+      
+      document.title = title;
+      
+      const metaDesc = document.querySelector('meta[name="description"]');
+      if (metaDesc) metaDesc.setAttribute('content', description);
+      
+      // Update OG tags
+      const ogTitle = document.querySelector('meta[property="og:title"]');
+      if (ogTitle) ogTitle.setAttribute('content', title);
+      const ogDesc = document.querySelector('meta[property="og:description"]');
+      if (ogDesc) ogDesc.setAttribute('content', description);
+      const ogImage = document.querySelector('meta[property="og:image"]');
+      if (ogImage && product.images.length > 0) ogImage.setAttribute('content', product.images[0]);
+      
+      // Update Twitter tags
+      const twTitle = document.querySelector('meta[name="twitter:title"]');
+      if (twTitle) twTitle.setAttribute('content', title);
+      const twDesc = document.querySelector('meta[name="twitter:description"]');
+      if (twDesc) twDesc.setAttribute('content', description);
+      const twImage = document.querySelector('meta[name="twitter:image"]');
+      if (twImage && product.images.length > 0) twImage.setAttribute('content', product.images[0]);
+    }
+  }, [product, lang]);
+
+  // SEO: Breadcrumb Structured Data for Google/AI Crawlers
+  const structuredData = useMemo(() => {
+    const base = window.location.origin;
+    const breadcrumbList = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Orbi Shop",
+          "item": base
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": product.niche || "Marketplace",
+          "item": `${base}/?niche=${encodeURIComponent(product.niche || "")}`
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": product.category,
+          "item": `${base}/?category=${encodeURIComponent(product.category)}`
+        },
+        {
+          "@type": "ListItem",
+          "position": 4,
+          "name": product.name,
+          "item": `${base}/?product=${product.id}`
+        }
+      ]
+    };
+
+    const productSchema = {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": product.name,
+      "image": product.images,
+      "description": product.description,
+      "sku": product.id,
+      "brand": {
+        "@type": "Brand",
+        "name": displaySeller.name
+      },
+      "offers": {
+        "@type": "Offer",
+        "url": `${base}/?product=${product.id}`,
+        "priceCurrency": "TZS",
+        "price": product.price,
+        "itemCondition": "https://schema.org/NewCondition",
+        "availability": product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+        "seller": {
+          "@type": "Organization",
+          "name": displaySeller.name
+        }
+      },
+      "aggregateRating": reviews.length > 0 ? {
+        "@type": "AggregateRating",
+        "ratingValue": (reviews.reduce((a, b) => a + b.rating, 0) / reviews.length).toFixed(1),
+        "reviewCount": reviews.length
+      } : undefined
+    };
+
+    return [breadcrumbList, productSchema];
+  }, [product, displaySeller, reviews, lang]);
+
   // Retrieve reviews dynamically on mount/product change
   useEffect(() => {
     let active = true;
@@ -1196,6 +1295,11 @@ export default function ProductDetailPage({
           </div>
         </div>
       )}
+      
+      {/* SEO: Inject Structured Data for Crawlers */}
+      <script type="application/ld+json">
+        {JSON.stringify(structuredData)}
+      </script>
     </div>
   );
 }

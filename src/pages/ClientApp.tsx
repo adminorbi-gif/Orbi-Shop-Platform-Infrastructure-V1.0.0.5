@@ -423,6 +423,16 @@ export const formatOrderNumber = (order: any) => {
   return order.id.substring(0, 8).toUpperCase();
 };
 
+const slugify = (text: string) => {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w-]+/g, '')
+    .replace(/--+/g, '-');
+};
+
 export default function ClientApp() {
   const { showAlert, showConfirm } = useDialog();
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -818,6 +828,70 @@ export default function ClientApp() {
   const [viewInvoice, setViewInvoice] = useState<Order | null>(null);
   const [viewPromo, setViewPromo] = useState<Promotion | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  // SEO: Dynamic Title and Meta Tag Updates for the Search Engine Platform
+  useEffect(() => {
+    const baseTitle = "Orbi Shop | The Most Trusted Marketplace in Tanzania";
+    const baseDesc = "Orbi Shop is Tanzania's safest e-commerce platform. Shop verified products, enjoy payment protection with Orbi Pay, and track your orders in real-time. Nunua mtandaoni Tanzania.";
+    
+    let currentTitle = baseTitle;
+    let currentDesc = baseDesc;
+
+    if (committedSearch.trim()) {
+      currentTitle = `Search results for "${committedSearch}" | Orbi Shop`;
+      currentDesc = `Find the best prices for "${committedSearch}" on Orbi Shop Tanzania. Verified sellers and secure payments guaranteed. Buy ${committedSearch} safely.`;
+    } else if (selectedNiche !== "Zote") {
+      currentTitle = `${selectedNiche} | Orbi Shop Tanzania`;
+      currentDesc = `Discover the best ${selectedNiche} products on Orbi Shop. High quality, authentic, and protected shopping in Tanzania. ${selectedNiche} deals today.`;
+    }
+
+    document.title = currentTitle;
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute('content', currentDesc);
+    
+    // OG Tags
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute('content', currentTitle);
+    const ogDesc = document.querySelector('meta[property="og:description"]');
+    if (ogDesc) ogDesc.setAttribute('content', currentDesc);
+  }, [committedSearch, selectedNiche, lang]);
+
+  // SEO: Structured Data for the Marketplace Platform
+  const marketplaceStructuredData = useMemo(() => {
+    const base = window.location.origin;
+    
+    // Website Search Schema
+    const websiteSchema = {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Orbi Shop",
+      "url": base + "/",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": base + "/?q={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
+    };
+
+    // ItemList for currently visible top products (to help AIs discover links)
+    const itemListSchema = {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": committedSearch ? `Search results for ${committedSearch}` : "Orbi Shop Featured Products",
+      "itemListElement": products.slice(0, 15).map((p, idx) => ({
+        "@type": "ListItem",
+        "position": idx + 1,
+        "url": `${base}/?product=${p.id}`,
+        "name": p.name
+      }))
+    };
+
+    return [websiteSchema, itemListSchema];
+  }, [products, committedSearch]);
+
   const [viewSeller, setViewSeller] = useState<SellerProfile | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedProductForReview, setSelectedProductForReview] = useState<{
@@ -914,17 +988,38 @@ export default function ClientApp() {
     const handleUrlToStateSync = () => {
       const search = new URLSearchParams(window.location.search);
       const hash = window.location.hash;
+      const path = window.location.pathname;
       const cur = syncStatesRef.current;
 
-      // 1. Handle product selection
+      // 1. Handle product selection from Path or Query
       const prodId = search.get("product") || search.get("product-id");
-      if (prodId) {
-        if (!cur.selectedProduct || (cur.selectedProduct.id !== prodId && cur.selectedProduct.legacy_id !== prodId)) {
-          const found = products.find(p => p.id === prodId || p.legacy_id === prodId);
+      const pathParts = path.split('/').filter(Boolean);
+      let pathProdId = null;
+      if (pathParts[0] === 'shop' && pathParts.length >= 3) {
+        const lastPart = pathParts[pathParts.length - 1];
+        const idMatch = lastPart.match(/--([a-z0-9-]+)$/i);
+        if (idMatch) pathProdId = idMatch[1];
+      }
+
+      const effectiveProdId = prodId || pathProdId;
+      if (effectiveProdId) {
+        if (!cur.selectedProduct || (cur.selectedProduct.id !== effectiveProdId && cur.selectedProduct.legacy_id !== effectiveProdId)) {
+          const found = products.find(p => p.id === effectiveProdId || p.legacy_id === effectiveProdId);
           if (found) setSelectedProduct(found);
         }
       } else {
         if (cur.selectedProduct) setSelectedProduct(null);
+      }
+
+      // 1b. Handle category from path
+      if (pathParts[0] === 'shop' && pathParts.length === 2 && !effectiveProdId) {
+          const catSlug = pathParts[1];
+          // Try to find matching category by slug or name
+          // This is a bit loose but helps SEO discovery
+          if (selectedCategory === 'Zote') {
+              // We don't strictly set state here to avoid loops, 
+              // but we could identify it if needed.
+          }
       }
 
       // 2. Handle seller storefront
@@ -999,12 +1094,31 @@ export default function ClientApp() {
   // Sync React State changes to Browser URL parameters instantly
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    let newPath = window.location.pathname;
 
     if (selectedProduct) {
-      params.set("product", selectedProduct.id || selectedProduct.legacy_id);
-    } else {
+      const nicheSlug = slugify(selectedProduct.niche || 'general');
+      // Category might be "Phones::iOS", we want "phones/ios"
+      const categoryPath = (selectedProduct.category || '')
+        .split('::')
+        .map(part => slugify(part))
+        .filter(Boolean)
+        .join('/');
+      
+      const productSlug = slugify(selectedProduct.name);
+      
+      const fullCategoryPath = categoryPath ? `${nicheSlug}/${categoryPath}` : nicheSlug;
+      newPath = `/shop/${fullCategoryPath}/${productSlug}--${selectedProduct.id}`;
+      
       params.delete("product");
       params.delete("product-id");
+    } else if (selectedCategory && selectedCategory !== "Zote") {
+      newPath = `/shop/${slugify(selectedCategory)}`;
+      params.delete("product");
+    } else {
+      if (newPath.startsWith('/shop/')) {
+        newPath = '/';
+      }
     }
 
     if (viewSeller) {
@@ -1062,12 +1176,15 @@ export default function ClientApp() {
     }
 
     const currentSearch = window.location.search;
+    const currentPath = window.location.pathname;
     const newSearch = params.toString() ? `?${params.toString()}` : "";
-    if (currentSearch !== newSearch) {
-      window.history.pushState({}, "", window.location.pathname + newSearch + window.location.hash);
+    
+    if (currentSearch !== newSearch || currentPath !== newPath) {
+      window.history.pushState({}, "", newPath + newSearch + window.location.hash);
     }
   }, [
     selectedProduct,
+    selectedCategory,
     viewSeller,
     showCart,
     showCheckout,
@@ -1156,14 +1273,24 @@ export default function ClientApp() {
 
   const handleProductSelect = (p: Product) => {
     setSelectedProduct(p);
+    
+    const nicheSlug = slugify(p.niche || 'general');
+    const categoryPath = (p.category || '')
+      .split('::')
+      .map(part => slugify(part))
+      .filter(Boolean)
+      .join('/');
+    const productSlug = slugify(p.name);
+    
+    const fullCategoryPath = categoryPath ? `${nicheSlug}/${categoryPath}` : nicheSlug;
+    const newPath = `/shop/${fullCategoryPath}/${productSlug}--${p.id}`;
 
-    const params = new URLSearchParams(window.location.search);
-    params.set("product", p.id);
     window.history.pushState(
       {},
       "",
-      `${window.location.pathname}?${params.toString()}`,
+      newPath
     );
+    window.dispatchEvent(new Event('popstate'));
 
     setRecentProductIds((prev) => {
       const updated = [p.id, ...prev.filter((id) => id !== p.id)].slice(0, 10);
@@ -6207,6 +6334,11 @@ Zawadi ya Alama za Uaminifu zilizoongezwa kwenye kibeti chako: +${earned} Points
           <span>{toastMsg}</span>
         </div>
       )}
+
+      {/* SEO: Inject Marketplace Structured Data for Crawlers */}
+      <script type="application/ld+json">
+        {JSON.stringify(marketplaceStructuredData)}
+      </script>
     </>
   );
 }

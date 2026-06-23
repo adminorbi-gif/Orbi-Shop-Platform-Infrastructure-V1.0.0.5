@@ -73,6 +73,15 @@ async function startServer() {
   app.use(express.json({ limit: "15mb" }));
   app.use(express.urlencoded({ limit: "15mb", extended: true }));
 
+  // Global SEO & Search Engine Identity Headers
+  app.use((req, res, next) => {
+    // Help external crawlers (Google, AIs) understand our platform status
+    res.setHeader("X-Robots-Tag", "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1");
+    // Link to our search engine description
+    res.setHeader("Link", '<' + (req.protocol + '://' + req.get('host')) + '/opensearch.xml>; rel="search"; type="application/opensearchdescription+xml"');
+    next();
+  });
+
   // API Routes Start Here
   app.post("/api/send-template", async (req, res) => {
     const reqApiKey = req.headers["x-api-key"] || req.headers["X-API-Key"] || req.query.apiKey;
@@ -137,10 +146,20 @@ async function startServer() {
   // Dynamic Sitemap Generator for Search Engines
   app.get("/sitemap.xml", async (req, res) => {
     try {
+      const slugify = (text: string) => {
+        return text
+          .toString()
+          .toLowerCase()
+          .trim()
+          .replace(/\s+/g, '-')
+          .replace(/[^\w-]+/g, '')
+          .replace(/--+/g, '-');
+      };
+
       // Fetch visible products for the sitemap
       const { data: products } = await supabase
         .from('products')
-        .select('id, name, updated_at')
+        .select('id, name, updated_at, category')
         .limit(1000);
 
       const protocol = req.headers['x-forwarded-proto'] || req.protocol;
@@ -158,9 +177,27 @@ async function startServer() {
       if (products) {
         products.forEach((p: any) => {
           const lastMod = p.updated_at ? new Date(p.updated_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+          
+          // Parse niche and sub-categories from the category column "Niche::Sub1::Sub2"
+          const catRaw = typeof p.category === 'string' ? p.category : '';
+          const parts = catRaw.split('::');
+          const niche = parts.length > 1 ? parts[0] : 'Electronics';
+          const subCategory = parts.length > 1 ? parts.slice(1).join('::') : catRaw;
+
+          const nicheSlug = slugify(niche);
+          const subCategoryPath = subCategory
+            .split('::')
+            .map(part => slugify(part))
+            .filter(Boolean)
+            .join('/');
+          
+          const productSlug = slugify(p.name);
+          const fullCategoryPath = subCategoryPath ? `${nicheSlug}/${subCategoryPath}` : nicheSlug;
+          const productPath = `/shop/${fullCategoryPath}/${productSlug}--${p.id}`;
+          
           xml += `
   <url>
-    <loc>${baseUrl}/?productId=${p.id}</loc>
+    <loc>${baseUrl}${productPath}</loc>
     <lastmod>${lastMod}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>

@@ -265,6 +265,7 @@ export default function SellerApp({
   const [prodWarranty, setProdWarranty] = useState("");
   const [prodNiche, setProdNiche] = useState("");
   const [prodCategory, setProdCategory] = useState("");
+  const [prodFamily, setProdFamily] = useState("");
   const [prodPrice, setProdPrice] = useState("");
   const [prodOldPrice, setProdOldPrice] = useState("");
   const [prodStock, setProdStock] = useState("");
@@ -653,6 +654,7 @@ export default function SellerApp({
       setProdWarranty(product.warranty || "");
       setProdNiche(product.niche || "");
       setProdCategory(product.category || "");
+      setProdFamily(product.family || "");
       setProdPrice(product.price ? product.price.toString() : "");
       setProdOldPrice(product.oldPrice ? product.oldPrice.toString() : "");
       setProdStock(product.stock ? product.stock.toString() : "0");
@@ -679,6 +681,7 @@ export default function SellerApp({
       setProdWarranty("");
       setProdNiche(nichesList.length > 0 ? nichesList[0].name : "");
       setProdCategory("");
+      setProdFamily("");
       setProdPrice("");
       setProdOldPrice("");
       setProdStock("10");
@@ -725,6 +728,7 @@ export default function SellerApp({
       warranty: prodWarranty.trim(),
       niche: prodNiche,
       category: prodCategory.trim() || prodNiche,
+      family: prodFamily.trim(),
       price: priceNum,
       oldPrice: prodOldPrice ? parseFloat(prodOldPrice) : undefined,
       stock: stockNum,
@@ -3246,23 +3250,20 @@ export default function SellerApp({
                   </p>
                 </div>
 
-                {/* Niche & Subcategory */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Niche, Category & Family Segment */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-white/50 p-4 rounded-2xl border border-slate-200/60 shadow-inner">
                   <div className="space-y-1.5">
                     <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                      {lang === "sw"
-                        ? "Kundi la Msingi (Niche)"
-                        : "Primary Niche"}
+                      {lang === "sw" ? "Soko la Bidhaa (Niche)" : "Primary Niche"}
                     </label>
                     <select
                       value={prodNiche}
                       onChange={(e) => {
                         setProdNiche(e.target.value);
-                        if (!prodCategory) {
-                          setProdCategory("");
-                        }
+                        setProdCategory("");
+                        setProdFamily("");
                       }}
-                      className="w-full bg-slate-50 border border-slate-200/80 hover:border-slate-300 px-4 py-3 rounded-xl text-xs font-bold outline-none focus:border-emerald-600 focus:bg-white transition text-slate-700"
+                      className="w-full bg-white border border-slate-200/80 hover:border-slate-300 px-4 py-3 rounded-xl text-xs font-bold outline-none focus:border-emerald-600 focus:bg-white transition text-slate-700"
                     >
                       {nichesList.map((n) => (
                         <option key={n.name} value={n.name}>
@@ -3277,88 +3278,50 @@ export default function SellerApp({
                         </option>
                       )}
                     </select>
-
-                    {/* Dynamic Niche Suggestion Prompting Pills */}
-                    <div className="mt-1.5 flex flex-wrap gap-1 animate-in fade-in duration-200">
-                      {(() => {
-                        const selectedNicheObj = nichesList.find(
-                          (n) => n.name === prodNiche,
-                        );
-                        let suggestions: string[] =
-                          selectedNicheObj?.categories || [];
-
-                        if (suggestions.length === 0) {
-                          suggestions = [
-                            "Smartphones",
-                            "Shoes",
-                            "Bags",
-                            "Kitchenware",
-                            "Home Decor",
-                            "Electronics",
-                          ];
-                        }
-
-                        return suggestions.map((sugg) => (
-                          <button
-                            key={sugg}
-                            type="button"
-                            onClick={() => setProdCategory(sugg)}
-                            className={`px-2 py-1 rounded-md text-[9px] font-bold transition duration-150 border cursor-pointer hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-400 ${
-                              prodCategory === sugg
-                                ? "bg-emerald-600 text-white border-emerald-600"
-                                : "bg-white text-slate-600 border-slate-200"
-                            }`}
-                          >
-                            {sugg}
-                          </button>
-                        ));
-                      })()}
-                    </div>
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                      {lang === "sw"
-                        ? "Kikundi Kidogo (Subcategory)"
-                        : "Subcategory / Secondary Category"}
+                      {lang === "sw" ? "Kundi la Bidhaa (Category)" : "Category"}
                     </label>
-                    <input
-                      required
-                      type="text"
-                      list="category-suggestions"
+                    <select
                       value={prodCategory}
-                      onChange={(e) => setProdCategory(e.target.value)}
-                      placeholder={
-                        lang === "sw"
-                          ? "M.g. Smartphones au Accessories"
-                          : "e.g. Smartphones or Accessories"
-                      }
-                      className="w-full bg-slate-50 border border-slate-200/80 hover:border-slate-300 px-4 py-3 rounded-xl text-xs font-medium outline-none focus:border-emerald-600 focus:bg-white transition"
-                    />
-                    <datalist id="category-suggestions">
-                      {(() => {
-                        const selectedNicheObj = nichesList.find(
-                          (n) => n.name === prodNiche,
-                        );
-                        let suggestions: string[] =
-                          selectedNicheObj?.categories || [];
+                      onChange={(e) => {
+                        setProdCategory(e.target.value);
+                        setProdFamily("");
+                      }}
+                      className="w-full bg-white border border-slate-200/80 hover:border-slate-300 px-4 py-3 rounded-xl text-xs font-bold outline-none focus:border-emerald-600 focus:bg-white transition text-slate-700"
+                    >
+                      <option value="">{lang === "sw" ? "-- Chagua Kundi --" : "-- Select Category --"}</option>
+                      {nichesList
+                        .find((n) => n.name === prodNiche)
+                        ?.categories?.map((cat) => (
+                          <option key={cat.name} value={cat.name}>
+                            {cat.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
 
-                        if (suggestions.length === 0) {
-                          suggestions = [
-                            "Smartphones",
-                            "Shoes",
-                            "Bags",
-                            "Kitchenware",
-                            "Home Decor",
-                            "Electronics",
-                          ];
-                        }
-
-                        return suggestions.map((sugg) => (
-                          <option key={`dl-${sugg}`} value={sugg} />
-                        ));
-                      })()}
-                    </datalist>
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                      {lang === "sw" ? "Familia ya Bidhaa (Family)" : "Subcategory / Family"}
+                    </label>
+                    <select
+                      value={prodFamily}
+                      onChange={(e) => setProdFamily(e.target.value)}
+                      className="w-full bg-white border border-slate-200/80 hover:border-slate-300 px-4 py-3 rounded-xl text-xs font-bold outline-none focus:border-emerald-600 focus:bg-white transition text-slate-700"
+                    >
+                      <option value="">{lang === "sw" ? "-- Chagua Familia --" : "-- Select Family --"}</option>
+                      {nichesList
+                        .find((n) => n.name === prodNiche)
+                        ?.categories?.find((c) => c.name === prodCategory)
+                        ?.families?.map((fam) => (
+                          <option key={fam} value={fam}>
+                            {fam}
+                          </option>
+                        ))}
+                    </select>
                   </div>
                 </div>
 
