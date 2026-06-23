@@ -2210,8 +2210,57 @@ Format: ["keyword1", "keyword2", ...]`;
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*all', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+
+    let indexTemplate: string | null = null;
+    app.get('*all', async (req, res) => {
+      const indexPath = path.join(distPath, 'index.html');
+      try {
+        if (!indexTemplate || process.env.NODE_ENV !== "production") {
+          if (fs.existsSync(indexPath)) {
+            indexTemplate = fs.readFileSync(indexPath, 'utf8');
+          } else {
+            return res.status(404).send("Index file not found. Please build the app.");
+          }
+        }
+        
+        let html = indexTemplate;
+        const productId = req.query.product || req.query.productId;
+
+        if (productId) {
+          try {
+            const { data: product } = await supabase.from('products').select('*').eq('id', productId).single();
+            if (product) {
+              const name = product.nameSw || product.name;
+              const price = product.price ? `${Number(product.price).toLocaleString()} TZS` : "bei nzuri";
+              const desc = `Bei ya ${name} ni ${price}. Nunua sasa kwenye Orbi Shop Tanzania. Bidhaa bora, malipo salama na usafirishaji wa haraka.`;
+              const image = (product.images && product.images.length > 0) ? product.images[0] : "https://limcgmcytzvotxhthqiu.supabase.co/storage/v1/object/public/PLATFROM%20STOCKS/Platform%20Logos/OrbiShop_Logo_Blue.png";
+              const title = `Bei ya ${name} | Orbi Shop Tanzania`;
+              
+              // Dynamic replacement of meta tags for social media previews
+              html = html.replace(/<title>.*?<\/title>/, `<title>${title}</title>`);
+              html = html.replace(/<meta name="description" content=".*?" \/>/g, `<meta name="description" content="${desc}" />`);
+              html = html.replace(/<meta property="og:title" content=".*?" \/>/g, `<meta property="og:title" content="${title}" />`);
+              html = html.replace(/<meta property="og:description" content=".*?" \/>/g, `<meta property="og:description" content="${desc}" />`);
+              html = html.replace(/<meta property="og:image" content=".*?" \/>/g, `<meta property="og:image" content="${image}" />`);
+              html = html.replace(/<meta name="twitter:title" content=".*?" \/>/g, `<meta name="twitter:title" content="${title}" />`);
+              html = html.replace(/<meta name="twitter:description" content=".*?" \/>/g, `<meta name="twitter:description" content="${desc}" />`);
+              html = html.replace(/<meta name="twitter:image" content=".*?" \/>/g, `<meta name="twitter:image" content="${image}" />`);
+              
+              // Also update canonical and og:url if possible
+              const fullUrl = `https://shop.orbifinancial.com/?product=${productId}`;
+              html = html.replace(/<link rel="canonical" href=".*?" \/>/, `<link rel="canonical" href="${fullUrl}" />`);
+              html = html.replace(/<meta property="og:url" content=".*?" \/>/, `<meta property="og:url" content="${fullUrl}" />`);
+            }
+          } catch (dbErr) {
+            console.error("Dynamic SEO DB fetch error:", dbErr);
+          }
+        }
+        
+        res.send(html);
+      } catch (err) {
+        console.error("HTML serve error:", err);
+        res.status(500).send("Internal Server Error");
+      }
     });
   }
 
