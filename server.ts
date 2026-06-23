@@ -74,6 +74,46 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "15mb", extended: true }));
 
   // API Routes Start Here
+  app.post("/api/send-template", async (req, res) => {
+    const reqApiKey = req.headers["x-api-key"] || req.headers["X-API-Key"] || req.query.apiKey;
+    const orbiApiKey = process.env.ORBI_SHOP_TALK_API_KEY;
+    if (orbiApiKey && reqApiKey !== orbiApiKey) {
+      return res.status(401).json({ success: false, error: "Unauthorized: Invalid x-api-key credentials." });
+    }
+
+    const { templateName, recipient, channel, language, data, brand, attachments, requestId } = req.body;
+    if (!templateName || !recipient || !channel) {
+      return res.status(400).json({ success: false, error: "Missing required fields: templateName, recipient, and channel are mandatory." });
+    }
+
+    const { sendOrbiTalkTemplate } = await import("./server/routes/talk.js");
+    const parsedLang = (language === "sw" || language === "en") ? language : "sw";
+    const parsedChannel = (channel === "email" || channel === "sms") ? channel : "email";
+    const parsedRequestId = requestId || `shop-proxy-${templateName.toLowerCase()}-${Date.now()}-${Math.floor(Math.random()*10000)}`;
+
+    try {
+      const result = await sendOrbiTalkTemplate({
+        templateName,
+        recipient,
+        channel: parsedChannel,
+        language: parsedLang,
+        requestId: parsedRequestId,
+        data: data || {},
+        brand,
+        attachments
+      });
+
+      if (!result.success) {
+        return res.status(500).json({ success: false, error: result.error || "Gateway dispatch failed." });
+      }
+
+      return res.json({ success: true, ...result });
+    } catch (err: any) {
+      console.error("POST /api/send-template controller crashed:", err.message);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   app.use("/api/subscriptions", subscriptionRouter);
   app.use("/api/v1/products", productsRouter);
   app.use("/api/v1/orders", ordersRouter);

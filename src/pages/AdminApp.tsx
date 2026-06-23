@@ -4626,6 +4626,11 @@ function SellersAdmin({
     let fullName = "";
     let email = "";
     let storeName = "";
+    let niche = "";
+    let location = "";
+    let tin = "";
+    let businessType = "";
+    let estimatedOrders = "";
     let description = "";
     let proposedPassword = "123456";
 
@@ -4637,6 +4642,16 @@ function SellersAdmin({
         email = line.split(/barua pepe:/i)[1]?.trim() || "";
       } else if (lower.includes("duka:")) {
         storeName = line.split(/duka:/i)[1]?.trim() || "";
+      } else if (lower.includes("niche ya biashara:")) {
+        niche = line.split(/niche ya biashara:/i)[1]?.trim() || "";
+      } else if (lower.includes("nchi/eneo:")) {
+        location = line.split(/nchi\/eneo:/i)[1]?.trim() || "";
+      } else if (lower.includes("namba ya tin:")) {
+        tin = line.split(/namba ya tin:/i)[1]?.trim() || "";
+      } else if (lower.includes("aina ya biashara:")) {
+        businessType = line.split(/aina ya biashara:/i)[1]?.trim() || "";
+      } else if (lower.includes("kiwango cha mauzo:")) {
+        estimatedOrders = line.split(/kiwango cha mauzo:/i)[1]?.trim() || "";
       } else if (lower.includes("maelezo zaidi:")) {
         const details = line.split(/maelezo zaidi:/i)[1]?.trim() || "";
         if (details.includes("Password:")) {
@@ -4653,6 +4668,11 @@ function SellersAdmin({
       fullName: fullName || "N/A",
       email: email || "N/A",
       storeName: storeName || fullName || "N/A",
+      niche: niche || "N/A",
+      location: location || "N/A",
+      tin: tin || "N/A",
+      businessType: businessType || "N/A",
+      estimatedOrders: estimatedOrders || "N/A",
       description: description || "Requested via chat application form.",
       proposedPassword,
     };
@@ -4687,6 +4707,12 @@ function SellersAdmin({
     storeName: string;
     description: string;
     proposedPassword?: string;
+    phone?: string;
+    location?: string;
+    tin?: string;
+    businessType?: string;
+    estimatedOrders?: string;
+    niche?: string;
   } | null>(null);
   const [approvePassword, setApprovePassword] = useState("");
   const [approveForceChange, setApproveForceChange] = useState(true);
@@ -4697,6 +4723,12 @@ function SellersAdmin({
     storeName: string;
     description: string;
     proposedPassword?: string;
+    phone?: string;
+    location?: string;
+    tin?: string;
+    businessType?: string;
+    estimatedOrders?: string;
+    niche?: string;
   }) => {
     const lowerEmail = app.email.toLowerCase().trim();
     if (!lowerEmail || lowerEmail === "n/a" || !lowerEmail.includes("@")) {
@@ -5063,9 +5095,39 @@ function SellersAdmin({
                           <span className="text-slate-400 font-bold font-sans">{lang === "sw" ? "Simu: " : "Phone: "}</span>
                           {req.phone}
                         </p>
+                        {req.niche && req.niche !== "N/A" && (
+                          <p>
+                            <span className="text-slate-400 font-bold font-sans">{lang === "sw" ? "Niche: " : "Niche: "}</span>
+                            <span className="bg-orange-50 text-orange-700 font-bold px-1.5 py-0.5 rounded text-[10px] border border-orange-150">{req.niche}</span>
+                          </p>
+                        )}
+                        {req.location && req.location !== "N/A" && (
+                          <p className="truncate">
+                            <span className="text-slate-400 font-bold font-sans">{lang === "sw" ? "Eneo: " : "Location: "}</span>
+                            {req.location}
+                          </p>
+                        )}
+                        {req.businessType && req.businessType !== "N/A" && (
+                          <p>
+                            <span className="text-slate-400 font-bold font-sans">{lang === "sw" ? "Aina: " : "Type: "}</span>
+                            {req.businessType}
+                          </p>
+                        )}
+                        {req.estimatedOrders && req.estimatedOrders !== "N/A" && (
+                          <p>
+                            <span className="text-slate-400 font-bold font-sans">{lang === "sw" ? "Mauzo: " : "Orders/Mo: "}</span>
+                            {req.estimatedOrders}
+                          </p>
+                        )}
+                        {req.tin && req.tin !== "N/A" && (
+                          <p className="font-mono text-emerald-700">
+                            <span className="text-slate-400 font-bold font-sans">{lang === "sw" ? "TIN: " : "TIN: "}</span>
+                            {req.tin}
+                          </p>
+                        )}
                       </div>
 
-                      {req.description && (
+                      {req.description && req.description !== "N/A" && (
                         <p className="text-slate-500 italic text-[11px] leading-relaxed line-clamp-2">
                           "{req.description}"
                         </p>
@@ -5761,6 +5823,34 @@ function SellersAdmin({
                   </span>{" "}
                   {approvingSellerData.fullName}
                 </p>
+                {approvingSellerData.niche && approvingSellerData.niche !== "N/A" && (
+                  <p>
+                    <span className="text-slate-400">Niche:</span>{" "}
+                    <span className="bg-orange-100 text-orange-850 px-1.5 py-0.5 rounded text-[10px]">{approvingSellerData.niche}</span>
+                  </p>
+                )}
+                {approvingSellerData.location && approvingSellerData.location !== "N/A" && (
+                  <p>
+                    <span className="text-slate-400">
+                      {lang === "sw" ? "Eneo:" : "Location:"}
+                    </span>{" "}
+                    {approvingSellerData.location}
+                  </p>
+                )}
+                {approvingSellerData.businessType && approvingSellerData.businessType !== "N/A" && (
+                  <p>
+                    <span className="text-slate-400">
+                      {lang === "sw" ? "Mfumo wa Biashara:" : "Business Entity:"}
+                    </span>{" "}
+                    {approvingSellerData.businessType}
+                  </p>
+                )}
+                {approvingSellerData.tin && approvingSellerData.tin !== "N/A" && (
+                  <p className="text-emerald-700 font-mono">
+                    <span className="text-slate-400 font-sans">TIN:</span>{" "}
+                    {approvingSellerData.tin}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -5844,6 +5934,13 @@ function SellersAdmin({
                       password: approvePassword.trim(),
                       isApproved: true,
                       mustChangePassword: approveForceChange,
+                      fullName: rawData.fullName || "",
+                      phone: rawData.phone || "",
+                      location: rawData.location && rawData.location !== "N/A" ? rawData.location : "",
+                      tin: rawData.tin && rawData.tin !== "N/A" ? rawData.tin : "",
+                      niche: rawData.niche && rawData.niche !== "N/A" ? rawData.niche : "",
+                      businessType: rawData.businessType && rawData.businessType !== "N/A" ? rawData.businessType : "Individual",
+                      estimatedOrders: rawData.estimatedOrders && rawData.estimatedOrders !== "N/A" ? rawData.estimatedOrders : "1-10",
                     };
 
                     const updated = [...sellers, newSeller];
@@ -12134,6 +12231,13 @@ function MessagesAdmin({
     email: string;
     storeName: string;
     description: string;
+    proposedPassword?: string;
+    phone?: string;
+    location?: string;
+    tin?: string;
+    businessType?: string;
+    estimatedOrders?: string;
+    niche?: string;
   } | null>(null);
   const [approvePassword, setApprovePassword] = useState("");
   const [approveForceChange, setApproveForceChange] = useState(true);
@@ -12146,7 +12250,13 @@ function MessagesAdmin({
     let fullName = "";
     let email = "";
     let storeName = "";
+    let niche = "";
+    let location = "";
+    let tin = "";
+    let businessType = "";
+    let estimatedOrders = "";
     let description = "";
+    let proposedPassword = "123456";
 
     lines.forEach((line) => {
       const lower = line.toLowerCase();
@@ -12156,8 +12266,25 @@ function MessagesAdmin({
         email = line.split(/barua pepe:/i)[1]?.trim() || "";
       } else if (lower.includes("duka:")) {
         storeName = line.split(/duka:/i)[1]?.trim() || "";
+      } else if (lower.includes("niche ya biashara:")) {
+        niche = line.split(/niche ya biashara:/i)[1]?.trim() || "";
+      } else if (lower.includes("nchi/eneo:")) {
+        location = line.split(/nchi\/eneo:/i)[1]?.trim() || "";
+      } else if (lower.includes("namba ya tin:")) {
+        tin = line.split(/namba ya tin:/i)[1]?.trim() || "";
+      } else if (lower.includes("aina ya biashara:")) {
+        businessType = line.split(/aina ya biashara:/i)[1]?.trim() || "";
+      } else if (lower.includes("kiwango cha mauzo:")) {
+        estimatedOrders = line.split(/kiwango cha mauzo:/i)[1]?.trim() || "";
       } else if (lower.includes("maelezo zaidi:")) {
-        description = line.split(/maelezo zaidi:/i)[1]?.trim() || "";
+        const details = line.split(/maelezo zaidi:/i)[1]?.trim() || "";
+        if (details.includes("Password:")) {
+          const passParts = details.split("Password:");
+          description = passParts[0]?.trim() || "";
+          proposedPassword = passParts[1]?.trim() || "123456";
+        } else {
+          description = details;
+        }
       }
     });
 
@@ -12165,7 +12292,13 @@ function MessagesAdmin({
       fullName: fullName || "N/A",
       email: email || "N/A",
       storeName: storeName || fullName || "N/A",
+      niche: niche || "N/A",
+      location: location || "N/A",
+      tin: tin || "N/A",
+      businessType: businessType || "N/A",
+      estimatedOrders: estimatedOrders || "N/A",
       description: description || "Requested via chat application form.",
+      proposedPassword,
     };
   };
 
@@ -12174,6 +12307,13 @@ function MessagesAdmin({
     email: string;
     storeName: string;
     description: string;
+    proposedPassword?: string;
+    phone?: string;
+    location?: string;
+    tin?: string;
+    businessType?: string;
+    estimatedOrders?: string;
+    niche?: string;
   }) => {
     if (!setSellers) {
       showAlert("Seller state is not loaded on this views.", "error");
@@ -14179,6 +14319,34 @@ function MessagesAdmin({
                       </span>{" "}
                       {approvingSellerData.fullName}
                     </p>
+                    {approvingSellerData.niche && approvingSellerData.niche !== "N/A" && (
+                      <p>
+                        <span className="text-slate-400">Niche:</span>{" "}
+                        <span className="bg-orange-100 text-orange-850 px-1.5 py-0.5 rounded text-[10px]">{approvingSellerData.niche}</span>
+                      </p>
+                    )}
+                    {approvingSellerData.location && approvingSellerData.location !== "N/A" && (
+                      <p>
+                        <span className="text-slate-400">
+                          {lang === "sw" ? "Eneo:" : "Location:"}
+                        </span>{" "}
+                        {approvingSellerData.location}
+                      </p>
+                    )}
+                    {approvingSellerData.businessType && approvingSellerData.businessType !== "N/A" && (
+                      <p>
+                        <span className="text-slate-400">
+                          {lang === "sw" ? "Mfumo wa Biashara:" : "Business Entity:"}
+                        </span>{" "}
+                        {approvingSellerData.businessType}
+                      </p>
+                    )}
+                    {approvingSellerData.tin && approvingSellerData.tin !== "N/A" && (
+                      <p className="text-emerald-700 font-mono">
+                        <span className="text-slate-400 font-sans">TIN:</span>{" "}
+                        {approvingSellerData.tin}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -14262,6 +14430,13 @@ function MessagesAdmin({
                           password: approvePassword.trim(),
                           isApproved: true,
                           mustChangePassword: approveForceChange,
+                          fullName: rawData.fullName || "",
+                          phone: rawData.phone || "",
+                          location: rawData.location && rawData.location !== "N/A" ? rawData.location : "",
+                          tin: rawData.tin && rawData.tin !== "N/A" ? rawData.tin : "",
+                          niche: rawData.niche && rawData.niche !== "N/A" ? rawData.niche : "",
+                          businessType: rawData.businessType && rawData.businessType !== "N/A" ? rawData.businessType : "Individual",
+                          estimatedOrders: rawData.estimatedOrders && rawData.estimatedOrders !== "N/A" ? rawData.estimatedOrders : "1-10",
                         };
 
                         const updated = [...sellers, newSeller];

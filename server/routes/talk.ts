@@ -215,7 +215,8 @@ export function getMessage(templateName: string, language: string) {
 const otpMap = new Map<string, { code: string; expires: number }>();
 
 /**
- * Reusable helper to send templated emails or SMS through the Orbi Talk Gateway
+ * Reusable helper to send templated emails or SMS through the Orbi Talk Gateway with full variable expansion,
+ * retry capability, and security guidelines.
  */
 export async function sendOrbiTalkTemplate(params: {
   templateName: string;
@@ -224,13 +225,27 @@ export async function sendOrbiTalkTemplate(params: {
   language: "sw" | "en";
   requestId: string;
   data: Record<string, string>;
+  brand?: {
+    code?: string;
+    displayName?: string;
+    senderEmail?: string;
+    source?: string;
+    logoUrl?: string;
+  };
+  attachments?: Array<{
+    filename: string;
+    content: string; // Base64 or URL content
+    contentType?: string;
+  }>;
 }) {
   const gatewayUrl = (process.env.ORBI_TALK_GATEWAY_URL || "https://talk.orbifinancial.com").replace(/\/$/, "");
   const apiKey = process.env.ORBI_SHOP_TALK_API_KEY;
-  const ownerUid = process.env.ORBI_SHOP_TALK_OWNER_UID || "";
-  let ownerEmail = process.env.ORBI_SHOP_TALK_OWNER_EMAIL || "shop@orbifinancial.com";
+  const ownerUid = process.env.ORBI_SHOP_TALK_OWNER_UID || "ORBI_SHOP_OWNER_UID";
+  
+  // Use explicit brand senderEmail, environment variable, or fallback
+  let ownerEmail = params.brand?.senderEmail || process.env.ORBI_SHOP_TALK_OWNER_EMAIL || "shop@orbifinancial.com";
 
-  // Override senderEmail based on template target per developer guidelines
+  // Establish senderEmail based on template target per developer guidelines
   const upperName = params.templateName.toUpperCase();
   if (upperName.includes("DISPUTE")) {
     ownerEmail = "support@orbifinancial.com";
@@ -238,6 +253,9 @@ export async function sendOrbiTalkTemplate(params: {
     ownerEmail = "offers@orbifinancial.com";
   } else if (upperName.includes("SELLER") || upperName.includes("MERCHANT")) {
     ownerEmail = "sellers@orbifinancial.com";
+  } else {
+    // For order, escrow, delivery, and refund messages
+    ownerEmail = "shop@orbifinancial.com";
   }
 
   // Derive messageType from template definition if present
@@ -250,6 +268,34 @@ export async function sendOrbiTalkTemplate(params: {
     }
   }
 
+  // Fallback check to ensure mType matches promotional for campaigns
+  if (upperName.includes("PROMO") || upperName.includes("CAMPAIGN")) {
+    mType = "promotional";
+  }
+
+  // Expand payload to maximum variables to prevent rendering failures
+  const expandedData = {
+    businessName: params.brand?.displayName || params.data.businessName || "ORBI Shop",
+    customerName: params.data.customerName || params.data.recipientName || "Daniel",
+    recipientName: params.data.recipientName || params.data.customerName || "Daniel",
+    sellerName: params.data.sellerName || "Muuzaji",
+    orderId: params.data.orderId || "10001",
+    currency: params.data.currency || "TZS",
+    amount: params.data.amount || "0",
+    refId: params.data.refId || params.data.orderId || `SHOP-${params.data.orderId || "10001"}`,
+    actionLink: params.data.actionLink || "https://orbi.shop",
+    logoUrl: params.brand?.logoUrl || "https://media-stock.orbifinancial.com/OrbiShop_Logo_Blue.png",
+    ...params.data
+  };
+
+  const brandPayload = {
+    code: params.brand?.code || "ORBI_SHOP",
+    displayName: params.brand?.displayName || expandedData.businessName || "ORBI Shop",
+    senderEmail: ownerEmail,
+    source: params.brand?.source || "merchant",
+    logoUrl: params.brand?.logoUrl || "https://media-stock.orbifinancial.com/OrbiShop_Logo_Blue.png"
+  };
+
   if (!apiKey) {
     console.warn("[ORBI-TALK] API KEY is missing. Real template message dispatch will be simulated.");
     await saveTalkLog({
@@ -260,12 +306,12 @@ export async function sendOrbiTalkTemplate(params: {
       requestId: params.requestId,
       status: "simulated",
       error: "Talk API Key is empty (Simulated)",
-      data: params.data
+      data: expandedData
     });
     return { success: true, simulated: true, message: "Talk API Key is empty" };
   }
 
-  const payload = {
+  const payload: any = {
     templateName: params.templateName,
     recipient: params.recipient,
     channel: params.channel,
@@ -273,74 +319,89 @@ export async function sendOrbiTalkTemplate(params: {
     messageType: mType,
     ownerUid,
     requestId: params.requestId,
-    brand: {
-      code: "ORBI_SHOP",
-      displayName: "ORBI Shop",
-      senderEmail: ownerEmail,
-      source: "merchant"
-    },
-    data: {
-      businessName: "ORBI Shop",
-      ...params.data
-    }
+    brand: brandPayload,
+    data: expandedData
   };
 
-  try {
-    const res = await fetch(`${gatewayUrl}/api/send-template`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const text = await res.text();
-    let json: any = {};
-    try {
-      json = JSON.parse(text);
-    } catch (e) {}
-
-    if (!res.ok) {
-      console.error(`[ORBI-TALK-GATEWAY ERROR] Template ${params.templateName}:`, res.status, text);
-      await saveTalkLog({
-        templateName: params.templateName,
-        recipient: params.recipient,
-        channel: params.channel,
-        language: params.language,
-        requestId: params.requestId,
-        status: "failed",
-        error: `HTTP ${res.status}: ${text}`,
-        data: params.data
-      });
-      return { success: false, error: text };
-    }
-
-    console.log(`[ORBI-TALK-GATEWAY] Template ${params.templateName} dispatched successfully:`, json);
-    await saveTalkLog({
-      templateName: params.templateName,
-      recipient: params.recipient,
-      channel: params.channel,
-      language: params.language,
-      requestId: params.requestId,
-      status: "success",
-      data: params.data
-    });
-    return { success: true, data: json };
-  } catch (err: any) {
-    console.error(`[ORBI-TALK-GATEWAY FETCH FAILURE] Template ${params.templateName}:`, err.message);
-    await saveTalkLog({
-      templateName: params.templateName,
-      recipient: params.recipient,
-      channel: params.channel,
-      language: params.language,
-      requestId: params.requestId,
-      status: "failed",
-      error: err.message,
-      data: params.data
-    });
-    return { success: false, error: err.message };
+  if (params.attachments && Array.isArray(params.attachments)) {
+    payload.attachments = params.attachments;
   }
+
+  let attempt = 0;
+  const maxAttempts = 3;
+  let lastError = "";
+  let res: any = null;
+
+  while (attempt < maxAttempts) {
+    attempt++;
+    try {
+      console.log(`[ORBI-TALK] Template ${params.templateName} dispatch attempt ${attempt} using ID: ${params.requestId}`);
+      res = await fetch(`${gatewayUrl}/api/send-template`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const text = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(text);
+      } catch (e) {}
+
+      if (res.ok) {
+        console.log(`[ORBI-TALK-GATEWAY] Template ${params.templateName} dispatched successfully on attempt ${attempt}:`, json);
+        await saveTalkLog({
+          templateName: params.templateName,
+          recipient: params.recipient,
+          channel: params.channel,
+          language: params.language,
+          requestId: params.requestId,
+          status: "success",
+          data: expandedData
+        });
+        return { success: true, data: json };
+      }
+
+      lastError = `HTTP ${res.status}: ${text}`;
+      console.error(`[ORBI-TALK-GATEWAY ERROR] Attempt ${attempt} returned status ${res.status}. Body: ${text}`);
+
+      // Auto-retry on 5xx network gateways errors. No retry on 4xx user validation errors.
+      if (res.status >= 500) {
+        if (attempt < maxAttempts) {
+          const backoff = 1000 * attempt;
+          console.warn(`[ORBI-TALK-RETRY] Encountered server error. Backing off for ${backoff}ms...`);
+          await new Promise(resolve => setTimeout(resolve, backoff));
+          continue;
+        }
+      } else {
+        break; // break early for client-side errors (400, 401, 403, 404)
+      }
+    } catch (err: any) {
+      lastError = err.message;
+      console.error(`[ORBI-TALK-GATEWAY FETCH FAILURE] Attempt ${attempt} crashed: ${err.message}`);
+      if (attempt < maxAttempts) {
+        const backoff = 1000 * attempt;
+        await new Promise(resolve => setTimeout(resolve, backoff));
+      }
+    }
+  }
+
+  // Persist delivery failures to log registry
+  await saveTalkLog({
+    templateName: params.templateName,
+    recipient: params.recipient,
+    channel: params.channel,
+    language: params.language,
+    requestId: params.requestId,
+    status: "failed",
+    error: lastError,
+    data: expandedData
+  });
+
+  return { success: false, error: lastError };
 }
 
 /**
@@ -760,6 +821,46 @@ router.get("/message", (req, res) => {
   }
   const result = getMessage(String(templateName), String(language || "sw"));
   res.json({ success: true, data: result });
+});
+
+// POST /api/talk/send-template - Secure proxy to dispatch templated email/SMS via Orbi Talk Gateway
+router.post("/send-template", async (req, res) => {
+  const reqApiKey = req.headers["x-api-key"] || req.headers["X-API-Key"] || req.query.apiKey;
+  const orbiApiKey = process.env.ORBI_SHOP_TALK_API_KEY;
+  if (orbiApiKey && reqApiKey !== orbiApiKey) {
+    return res.status(401).json({ success: false, error: "Unauthorized: Invalid x-api-key credentials." });
+  }
+
+  const { templateName, recipient, channel, language, data, brand, attachments, requestId } = req.body;
+  if (!templateName || !recipient || !channel) {
+    return res.status(400).json({ success: false, error: "Missing required fields: templateName, recipient, and channel are mandatory." });
+  }
+
+  const parsedLang = (language === "sw" || language === "en") ? language : "sw";
+  const parsedChannel = (channel === "email" || channel === "sms") ? channel : "email";
+  const parsedRequestId = requestId || `shop-proxy-${templateName.toLowerCase()}-${Date.now()}-${Math.floor(Math.random()*10000)}`;
+
+  try {
+    const result = await sendOrbiTalkTemplate({
+      templateName,
+      recipient,
+      channel: parsedChannel,
+      language: parsedLang,
+      requestId: parsedRequestId,
+      data: data || {},
+      brand,
+      attachments
+    });
+
+    if (!result.success) {
+      return res.status(500).json({ success: false, error: result.error || "Gateway dispatch failed." });
+    }
+
+    return res.json({ success: true, ...result });
+  } catch (err: any) {
+    console.error("POST /api/talk/send-template controller crashed:", err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 export default router;

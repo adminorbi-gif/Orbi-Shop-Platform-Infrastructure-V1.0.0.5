@@ -515,6 +515,25 @@ router.get("/sellers", async (req, res) => {
 router.post("/sellers", async (req, res) => {
   try {
     const sellers = req.body;
+
+    // Load any existing sellers BEFORE overwriting to detect additions & approvals
+    let existingIds: string[] = [];
+    let existingSellers: any[] = [];
+    try {
+      const { data: legacyData } = await getSupabase(req).from('promotions').select('description').eq('title', 'SYSTEM_SELLERS').maybeSingle();
+      if (legacyData && legacyData.description) {
+        try {
+          const parsed = JSON.parse(legacyData.description);
+          if (Array.isArray(parsed)) {
+            existingSellers = parsed;
+            existingIds = parsed.map((s: any) => s.id);
+          }
+        } catch (pe) {}
+      }
+    } catch (e) {
+      console.error("[SELLER REGISTRATION] Error fetching existing state:", e);
+    }
+
     // System backup write
     try {
       const payloadLegacy = { title: 'SYSTEM_SELLERS', description: JSON.stringify(sellers), visible: false };
@@ -526,31 +545,47 @@ router.post("/sellers", async (req, res) => {
       }
     } catch (e) {}
 
-    // Detect newly created sellers to send them their credentials
+    // Detect newly created or newly active/approved sellers to provision and send credentials
     try {
-      const { data: legacyData } = await getSupabase(req).from('promotions').select('description').eq('title', 'SYSTEM_SELLERS').maybeSingle();
-      let existingIds: string[] = [];
-      if (legacyData && legacyData.description) {
-        try {
-          const parsed = JSON.parse(legacyData.description);
-          if (Array.isArray(parsed)) {
-            existingIds = parsed.map((s: any) => s.id);
-          }
-        } catch (pe) {}
-      }
-
       const { sendOrbiTalkDirectSMS, sendOrbiTalkDirectEmail } = await import("./talk.js");
 
       for (const seller of sellers) {
-        // A seller is new if their ID is not in existingIds
-        if (seller && seller.id && !existingIds.includes(seller.id)) {
-          console.log(`[SELLER REGISTRATION TRIGGER] Brand new seller detected! ID: ${seller.id}, Name: ${seller.name}`);
+        const isNew = seller && seller.id && !existingIds.includes(seller.id);
+        const existingSeller = seller && seller.id ? existingSellers.find((e: any) => e.id === seller.id) : null;
+        const wasApprovedNow = seller && existingSeller && (seller.isApproved === true || seller.status === "active") && (existingSeller.isApproved === false || existingSeller.status !== "active");
+
+        if (isNew || wasApprovedNow) {
+          console.log(`[SELLER REGISTRATION RUN] Seller detected for credentials provisioning! ID: ${seller.id}, Name: ${seller.name}`);
           
           const password = seller.password || "123456";
           const email = seller.email || "";
           const phone = seller.invoicePhone || seller.phone || "";
           const name = seller.name || "Vendor";
 
+          // 1. Provision user in Supabase Auth to allow logins immediately
+          if (email && password) {
+            console.log(`[SELLER REGISTRATION] Auto-registering/provisioning seller: ${email} with password`);
+            await getSupabase(req).auth.signUp({
+              email: email.trim(),
+              password: password.trim(),
+              options: {
+                data: {
+                  full_name: name,
+                  role: "seller"
+                }
+              }
+            }).then(({ data: signUpData, error: signUpError }) => {
+              if (signUpError) {
+                console.log(`[SELLER REGISTRATION] Supabase Auth sign-up error or already exists:`, signUpError.message);
+              } else {
+                console.log(`[SELLER REGISTRATION] Supabase Auth account provisioned successfully for:`, email);
+              }
+            }).catch(ae => {
+              console.log(`[SELLER REGISTRATION] Supabase Auth sign-up promise error:`, ae.message);
+            });
+          }
+
+          // 2. Draft and send Orbi Talk notifications with credentials
           const subject = "Karibu Orbi Shop - Akaunti ya Muuzaji / Welcome to Orbi Shop Merchant Portal";
           
           const messageBodySw = `Sajili ya muuzaji imefanikiwa!\n\nJina la Duka: ${name}\nIngia kupitia Tovuti ya Wauzaji kwa:\nBarua pepe: ${email}\nNenosiri: ${password}\n\nTafadhali badili nenosiri lako mara utakapoingia kwa mara ya kwanza.\n\nAsante kwa kuamua kufanya biashara na Orbi Shop!`;
@@ -561,7 +596,7 @@ router.post("/sellers", async (req, res) => {
           // Send SMS if a phone number exists
           if (phone) {
             const cleanPhone = phone.trim().replace(/\s+/g, "");
-            console.log(`[SELLER REGISTRATION TRIGGER] Dispatching Welcome SMS to ${cleanPhone}`);
+            console.log(`[SELLER REGISTRATION RUN] Dispatching Welcome SMS to ${cleanPhone}`);
             await sendOrbiTalkDirectSMS({
               recipient: cleanPhone,
               body: combinedBody,
@@ -571,7 +606,7 @@ router.post("/sellers", async (req, res) => {
 
           // Send Email if email exists
           if (email) {
-            console.log(`[SELLER REGISTRATION TRIGGER] Dispatching Welcome Email to ${email}`);
+            console.log(`[SELLER REGISTRATION RUN] Dispatching Welcome Email to ${email}`);
             await sendOrbiTalkDirectEmail({
               recipient: email.trim(),
               subject: subject,

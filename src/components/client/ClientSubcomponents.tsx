@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Smartphone,
   Shirt,
@@ -110,23 +110,97 @@ export function ApplySellerModal({
   const [storeName, setStoreName] = useState("");
   const [info, setInfo] = useState("");
 
+  // Expanded fields under policy checklist
+  const [inchesList, setInchesList] = useState<{ name: string }[]>([]);
+  const [niche, setNiche] = useState("");
+  const [customNiche, setCustomNiche] = useState("");
+  const [location, setLocation] = useState("");
+  const [tin, setTin] = useState("");
+  const [businessType, setBusinessType] = useState("Individual");
+  const [estimatedOrders, setEstimatedOrders] = useState("1-10");
+  const [agreePolicy, setAgreePolicy] = useState(false);
+
+  useEffect(() => {
+    async function loadNiches() {
+      try {
+        const fetched = await db.getNiches();
+        if (fetched && fetched.length > 0) {
+          setInchesList(fetched);
+          setNiche(fetched[0].name);
+        } else {
+          // Standard defaults fallback
+          const standardNiches = [
+            { name: "Electronics & Phones" },
+            { name: "Fashion & Clothing" },
+            { name: "Home & Furniture" },
+            { name: "Beauty & Health" },
+            { name: "Auto Parts & Accessories" },
+            { name: "Groceries & Supermarket" }
+          ];
+          setInchesList(standardNiches);
+          setNiche(standardNiches[0].name);
+        }
+      } catch (err) {
+        console.warn("Failed to load niches inside modal, fallback defaults used:", err);
+        const standardNiches = [
+          { name: "Electronics & Phones" },
+          { name: "Fashion & Clothing" },
+          { name: "Home & Furniture" },
+          { name: "Beauty & Health" },
+          { name: "Auto Parts & Accessories" },
+          { name: "Groceries & Supermarket" }
+        ];
+        setInchesList(standardNiches);
+        setNiche(standardNiches[0].name);
+      }
+    }
+    loadNiches();
+  }, []);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!agreePolicy) {
+      showAlert(
+        lang === "sw"
+          ? "Tafadhali kwanza thibitisha kuwa unakubaliana na sera zetu za wauzaji."
+          : "Please agree to our merchant policies and guidelines before submitting.",
+        "error"
+      );
+      return;
+    }
+
     setLoading(true);
 
+    const mainNiche = niche === "Other" || niche === "Mengineyo" ? customNiche : niche;
+
     try {
+      // Structure the request text message carefully to allow the backend/admin to parse all fields cleanly
+      const formattedMessage = [
+        "Maombi ya Kuwa Muuzaji:",
+        `Jina Kamili: ${name}`,
+        `Barua pepe: ${email}`,
+        `Duka: ${storeName}`,
+        `Niche ya Biashara: ${mainNiche || "General"}`,
+        `Nchi/Eneo: ${location || "Tanzania"}`,
+        `Namba ya TIN: ${tin.trim() || "N/A"}`,
+        `Aina ya Biashara: ${businessType}`,
+        `Kiwango cha Mauzo: ${estimatedOrders}`,
+        `Maelezo zaidi: ${info || "N/A"}`
+      ].join("\n");
+
       await db.saveMessage({
         id: "",
         name,
         phone,
-        message: `Maombi ya Kuwa Muuzaji:\nJina Kamili: ${name}\nBarua pepe: ${email}\nDuka: ${storeName}\n${info ? "Maelezo zaidi: " + info : ""}`,
+        message: formattedMessage,
         date: Date.now()
       });
 
       showAlert(
         lang === "sw"
-          ? "Ombi lako limepokelewa na litafanyiwa kazi! Tutakutafuta hivi punde."
-          : "Your application has been received! Our team will review and contact you shortly.",
+          ? "Ombi lako la muuzaji limepokelewa na litafanyiwa kazi! Tutakutafuta hivi punde."
+          : "Your seller application has been received! Our registration team will review and contact you shortly.",
         "success",
       );
       onClose();
@@ -145,87 +219,224 @@ export function ApplySellerModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[300] flex items-center justify-center p-4 backdrop-blur-sm" id="apply-seller-modal">
-      <div className="bg-white rounded-[2rem] w-full max-w-md p-8 relative shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-[2rem] w-full max-w-lg p-8 relative shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
         <button
           onClick={onClose}
+          type="button"
           className="absolute right-6 top-6 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer border-none outline-none bg-transparent"
         >
           <X size={20} />
         </button>
 
         <div className="flex flex-col items-center mb-6">
-          <div className="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mb-4 animate-pulse">
-            <Store size={32} />
+          <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-amber-500 text-white rounded-full flex items-center justify-center mb-3 shadow-md animate-pulse">
+            <Store size={30} />
           </div>
           <h2 className="text-2xl font-black text-center text-slate-900 tracking-tight">
             {lang === "sw" ? "Omba Kuwa Muuzaji" : "Apply as Seller"}
           </h2>
-          <p className="text-sm text-slate-500 text-center mt-2 px-4 leading-relaxed font-medium">
+          <p className="text-xs text-slate-500 text-center mt-1.5 px-4 leading-relaxed font-semibold">
             {lang === "sw"
-              ? "Uza bidhaa zako kupitia mfumo wetu unaoaminika. Tutahitaji kuhakiki taarifa zako."
-              : "Sell your products on our trusted platform. We will need to verify your details."}
+              ? "Uza bidhaa zako kupitia Orbi Shop. Tuna kufuata sheria na sera za kuhakiki wauzaji."
+              : "Expand your reach on Orbi Shop. Please fill out the registration form below in line with our merchant policy."}
           </p>
         </div>
 
-        <form onSubmit={submit} className="space-y-4">
-          <input
-            required
-            type="text"
-            placeholder={lang === "sw" ? "Jina Kamili" : "Full Name"}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:border-orange-500 focus:bg-white font-medium"
-          />
-          <input
-            required
-            type="email"
-            placeholder={lang === "sw" ? "Barua Pepe yako" : "Email Address"}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:border-orange-500 focus:bg-white font-medium"
-          />
-          <input
-            required
-            type="text"
-            placeholder={lang === "sw" ? "Namba ya Simu" : "Phone Number"}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:border-orange-500 focus:bg-white font-medium"
-          />
-          <input
-            required
-            type="text"
-            placeholder={
-              lang === "sw"
-                ? "Jina Linalopendekezwa la Duka"
-                : "Proposed Store Name"
-            }
-            value={storeName}
-            onChange={(e) => setStoreName(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:border-orange-500 focus:bg-white font-medium"
-          />
+        <form onSubmit={submit} className="space-y-4 text-left">
+          {/* Section: Contact Info */}
+          <div>
+            <label className="block text-[11px] font-extrabold uppercase text-slate-400 tracking-wider mb-1.5">
+              {lang === "sw" ? "Taarifa za Mawasiliano" : "Contact Information"}
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                required
+                type="text"
+                placeholder={lang === "sw" ? "Jina Kamili" : "Full Name"}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:border-orange-500 focus:bg-white font-medium text-sm transition-all"
+              />
+              <input
+                required
+                type="email"
+                placeholder={lang === "sw" ? "Barua Pepe yako" : "Email Address"}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:border-orange-500 focus:bg-white font-medium text-sm transition-all"
+              />
+            </div>
+            <input
+              required
+              type="text"
+              placeholder={lang === "sw" ? "Namba ya Simu (e.g. 0744111222)" : "Phone Number (e.g. 0744111222)"}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:border-orange-500 focus:bg-white font-medium text-sm transition-all mt-3"
+            />
+          </div>
+
+          <hr className="border-slate-100" />
+
+          {/* Section: Store Profile & Policy Fields */}
+          <div>
+            <label className="block text-[11px] font-extrabold uppercase text-slate-400 tracking-wider mb-1.5">
+              {lang === "sw" ? "Profaili ya Duka na Bidhaa" : "Store & Product Profile"}
+            </label>
+            
+            <div className="space-y-3">
+              <input
+                required
+                type="text"
+                placeholder={
+                  lang === "sw"
+                    ? "Jina Linalopendekezwa la Duka"
+                    : "Proposed Store Name"
+                }
+                value={storeName}
+                onChange={(e) => setStoreName(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:border-orange-500 focus:bg-white font-semibold text-sm transition-all"
+              />
+
+              {/* Niche selector */}
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">
+                  {lang === "sw" ? "Unauza nini? (Niche Kuu)" : "What do you sell? (Primary Niche)"}
+                </label>
+                <select
+                  value={niche}
+                  onChange={(e) => setNiche(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:border-orange-500 focus:bg-white font-medium text-sm"
+                >
+                  {inchesList.map((item) => (
+                    <option key={item.name} value={item.name}>
+                      {item.name}
+                    </option>
+                  ))}
+                  <option value="Other">{lang === "sw" ? "Mengineyo / Niche nyingine" : "Other / Custom Niche"}</option>
+                </select>
+              </div>
+
+              {(niche === "Other" || niche === "Mengineyo") && (
+                <input
+                  required
+                  type="text"
+                  placeholder={lang === "sw" ? "Taja jina la Niche yako" : "Specify your custom niche"}
+                  value={customNiche}
+                  onChange={(e) => setCustomNiche(e.target.value)}
+                  className="w-full bg-slate-50 border border-orange-200 p-3 rounded-xl outline-none focus:border-orange-500 focus:bg-white font-medium text-sm animate-in slide-in-from-top-2 duration-150"
+                />
+              )}
+
+              {/* Physical Location Input */}
+              <input
+                required
+                type="text"
+                placeholder={lang === "sw" ? "Eneo Duka Lilipo (Mji/Mkoa)" : "Store Physical Location (City/Region)"}
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:border-orange-500 focus:bg-white font-medium text-sm transition-all"
+              />
+            </div>
+          </div>
+
+          <hr className="border-slate-100" />
+
+          {/* Section: Legal & Volume Policy Fields */}
+          <div>
+            <label className="block text-[11px] font-extrabold uppercase text-slate-400 tracking-wider mb-1.5">
+              {lang === "sw" ? "Utekelezaji wa kisheria & Kiwango" : "Regulatory Compliance & Expected Volume"}
+            </label>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">
+                  {lang === "sw" ? "Aina ya Mfumo wa Biashara" : "Business Entity Type"}
+                </label>
+                <select
+                  value={businessType}
+                  onChange={(e) => setBusinessType(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:border-orange-500 focus:bg-white font-medium text-sm"
+                >
+                  <option value="Individual">{lang === "sw" ? "Mtu Binafsi / Mjasiriamali" : "Individual / Sole Proprietor"}</option>
+                  <option value="Registered Company">{lang === "sw" ? "Kampuni Iliyosajiliwa (Ltd)" : "Registered Company (Ltd)"}</option>
+                  <option value="Partnership">{lang === "sw" ? "Ushirikiano (Partnership)" : "Partnership"}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">
+                  {lang === "sw" ? "Makadirio ya Agizo kwa Mwezi" : "Estimated Monthly Orders"}
+                </label>
+                <select
+                  value={estimatedOrders}
+                  onChange={(e) => setEstimatedOrders(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:border-orange-500 focus:bg-white font-medium text-sm"
+                >
+                  <option value="1-10">1 - 10 orders</option>
+                  <option value="11-50">11 - 50 orders</option>
+                  <option value="51-200">51 - 200 orders</option>
+                  <option value="200+">200+ orders</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <label className="block text-xs font-bold text-slate-600 mb-1">
+                {lang === "sw" ? "Namba ya TIN (Kama ipo)" : "TIN Number (If Registered)"}
+              </label>
+              <input
+                type="text"
+                maxLength={20}
+                placeholder={lang === "sw" ? "Namba ya utambulisho wa kodi (TIN)" : "Taxpayer Identification Number"}
+                value={tin}
+                onChange={(e) => setTin(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:border-orange-500 focus:bg-white font-mono text-sm transition-all"
+              />
+            </div>
+          </div>
+
           <textarea
             placeholder={
               lang === "sw"
-                ? "Maelezo ya ziada kuhusu bidhaa zako"
-                : "Additional info about your products"
+                ? "Maelezo ya ziada ya biashara au bidhaa ambazo ungependa tusajili mapema (Hiari)"
+                : "List specific brands, warranties, or special logistics support you require (Optional)"
             }
             value={info}
             onChange={(e) => setInfo(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:border-orange-500 focus:bg-white font-medium min-h-[100px] resize-none"
+            className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:border-orange-500 focus:bg-white font-medium text-xs min-h-[70px] resize-none"
           />
+
+          {/* Policy Agreement Checkbox */}
+          <div className="bg-orange-50/50 border border-orange-100 p-4 rounded-2xl">
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                required
+                type="checkbox"
+                checked={agreePolicy}
+                onChange={(e) => setAgreePolicy(e.target.checked)}
+                className="w-5 h-5 accent-orange-600 rounded cursor-pointer mt-0.5 shrink-0"
+              />
+              <span className="text-[11px] text-slate-700 leading-relaxed font-semibold">
+                {lang === "sw"
+                  ? "Ninakubaliana na Sera za Wauzaji za Orbi Shop: Nitatoa bidhaa halisi zenye ubora, nitasaibiwa rejesho ndani ya siku 30 ikitokea tatizo, na ninakubali ada ya asilimia ya huduma."
+                  : "I declare that all information is honest. I pledge to adhere to Orbi Shop Merchant Policies: maintaining genuine catalogs, honoring 30-day merchant refunds protection, and payment of setup/service charges."}
+              </span>
+            </label>
+          </div>
+
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-slate-900 hover:bg-slate-850 text-white py-3.5 rounded-xl font-bold mt-4 disabled:opacity-50 transition-all shadow-sm cursor-pointer border-none"
+            className="w-full bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-xl font-bold mt-4 disabled:opacity-50 transition-all shadow-md cursor-pointer border-none text-sm uppercase tracking-wider"
           >
             {loading
               ? lang === "sw"
-                ? "Inatuma..."
+                ? "Inatuma Maombi..."
                 : "Submitting..."
               : lang === "sw"
-                ? "Tuma Ombi"
-                : "Submit Application"}
+                ? "Tuma Maombi ya Muuzaji"
+                : "Submit Seller Registration"}
           </button>
         </form>
       </div>

@@ -54,6 +54,9 @@ export interface SellerProfile {
   phone?: string;
   location?: string;
   isVerifiedSeller?: boolean;
+  niche?: string;
+  businessType?: string;
+  estimatedOrders?: string;
 }
 
 
