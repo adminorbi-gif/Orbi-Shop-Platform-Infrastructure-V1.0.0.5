@@ -143,7 +143,10 @@ async function startServer() {
         .select('id, name, updated_at')
         .limit(1000);
 
-      const baseUrl = 'https://orbishop.co.tz';
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+      const host = req.get('host');
+      const baseUrl = `${protocol}://${host}`;
+      
       let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
