@@ -493,18 +493,28 @@ export async function sendOrbiTalkDirectSMS(params: {
 }
 
 /**
- * Reusable helper to send direct custom operational emails
+ * Reusable helper to send direct custom operational or promotional emails
  */
 export async function sendOrbiTalkDirectEmail(params: {
   recipient: string;
   subject: string;
   body: string;
   requestId: string;
+  ownerEmail?: string;
+  senderEmail?: string;
+  senderName?: string;
+  messageType?: "transactional" | "promotional";
 }) {
   const gatewayUrl = (process.env.ORBI_TALK_GATEWAY_URL || "https://talk.orbifinancial.com").replace(/\/$/, "");
   const apiKey = process.env.ORBI_SHOP_TALK_API_KEY;
   const ownerUid = process.env.ORBI_SHOP_TALK_OWNER_UID || "";
-  const ownerEmail = process.env.ORBI_SHOP_TALK_OWNER_EMAIL || "shop@orbifinancial.com";
+  
+  // Decide the raw email address for the sender (prefer user explicit, else env, else context default)
+  const defaultEmail = params.messageType === "promotional" ? "offers@orbifinancial.com" : "shop@orbifinancial.com";
+  const ownerEmail = params.ownerEmail || params.senderEmail || process.env.ORBI_SHOP_TALK_OWNER_EMAIL || defaultEmail;
+  
+  const senderDisplayName = params.senderName || "Orbi Shop";
+  const formattedFromEmail = `${senderDisplayName} <${ownerEmail}>`;
 
   if (!apiKey) {
     console.warn("[ORBI-TALK] API KEY is missing. Direct custom Email message will be simulated.");
@@ -526,10 +536,22 @@ export async function sendOrbiTalkDirectEmail(params: {
     subject: params.subject,
     body: params.body,
     channel: "email",
-    messageType: "transactional",
+    messageType: params.messageType || "transactional",
     ownerUid,
-    ownerEmail,
-    requestId: params.requestId
+    ownerEmail, // raw email address
+    fromEmail: formattedFromEmail, // Orbi Shop <email>
+    from: formattedFromEmail,
+    sender: formattedFromEmail,
+    senderEmail: ownerEmail,
+    senderName: senderDisplayName,
+    requestId: params.requestId,
+    brand: {
+      code: "ORBI_SHOP",
+      displayName: senderDisplayName,
+      senderEmail: ownerEmail,
+      source: "merchant",
+      logoUrl: "https://media-stock.orbifinancial.com/OrbiShop_Logo_Blue.png"
+    }
   };
 
   const ep = "/api/send-email";
@@ -632,7 +654,9 @@ router.post("/send-otp", async (req, res) => {
         recipient: cleanEmail,
         subject: emailSubject,
         body: emailBody,
-        requestId: emailReqUniqueId
+        requestId: emailReqUniqueId,
+        ownerEmail: "shop@orbifinancial.com",
+        senderName: "Orbi Shop"
       });
 
       if (emailResult.success) {
@@ -794,7 +818,9 @@ router.post("/send-test-message", async (req, res) => {
         recipient: cleanRecipient,
         subject: emailSubject,
         body: body.trim(),
-        requestId: reqId
+        requestId: reqId,
+        ownerEmail: "shop@orbifinancial.com",
+        senderName: "Orbi Shop"
       });
       return res.json({ success: true, ...result });
     } else if (channel === "sms") {

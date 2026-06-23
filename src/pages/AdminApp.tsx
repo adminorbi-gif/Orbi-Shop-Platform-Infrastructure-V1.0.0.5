@@ -843,7 +843,27 @@ export default function AdminApp() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<Lang>("sw");
-  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [showApplyModal, setShowApplyModal] = useState(() => {
+    return window.location.search.includes("seller-signup=true") || window.location.search.includes("seller-apply=true") || window.location.hash.includes("#seller-signup") || window.location.hash.includes("#seller-apply");
+  });
+
+  useEffect(() => {
+    const handleUrlChangeOnAdmin = () => {
+      const activeSignup = window.location.search.includes("seller-signup=true") || window.location.search.includes("seller-apply=true") || window.location.hash.includes("#seller-signup") || window.location.hash.includes("#seller-apply");
+      if (activeSignup) {
+        setShowApplyModal(true);
+      } else if (window.location.search.includes("seller-login=true") || window.location.search.includes("admin=true")) {
+        setShowApplyModal(false);
+      }
+    };
+    window.addEventListener("popstate", handleUrlChangeOnAdmin);
+    const intervalAdmin = setInterval(handleUrlChangeOnAdmin, 400);
+
+    return () => {
+      window.removeEventListener("popstate", handleUrlChangeOnAdmin);
+      clearInterval(intervalAdmin);
+    };
+  }, []);
 
   useEffect(() => {
     const checkUser = async () => {

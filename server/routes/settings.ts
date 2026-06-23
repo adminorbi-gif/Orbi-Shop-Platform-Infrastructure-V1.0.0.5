@@ -611,7 +611,9 @@ router.post("/sellers", async (req, res) => {
               recipient: email.trim(),
               subject: subject,
               body: combinedBody,
-              requestId: `SLR_EML_${seller.id}_${Date.now()}`
+              requestId: `SLR_EML_${seller.id}_${Date.now()}`,
+              ownerEmail: "sellers@orbifinancial.com",
+              senderName: "Orbi Shop"
             }).catch(err => console.error("Error sending direct Email to seller:", err));
           }
         }

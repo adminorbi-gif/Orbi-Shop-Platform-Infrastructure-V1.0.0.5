@@ -1982,7 +1982,7 @@ Format: ["keyword1", "keyword2", ...]`;
   // BACKEND AUTH API endpoints
   app.post("/api/auth/signup", authLimiter, async (req, res) => {
     try {
-      const { email, password, full_name, role, phone, tin } = req.body;
+      const { email, password, full_name, role, phone, tin, preferredLanguage } = req.body;
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -1994,9 +1994,58 @@ Format: ["keyword1", "keyword2", ...]`;
       
       // Auto create customer record purely on backend
       if (data.user && role !== "admin" && role !== "seller" && role !== "staff") {
+         const prefLang = preferredLanguage || "sw";
          await supabase.from("customers").insert([
-            { id: data.user.id, name: encrypt(full_name), email, phone: encrypt(phone || ""), status: "active", tin: tin ? encrypt(tin) : null }
+            {
+              id: data.user.id,
+              name: encrypt(full_name),
+              email,
+              phone: encrypt(phone || ""),
+              status: "active",
+              tin: tin ? encrypt(tin) : null,
+              preferred_language: prefLang
+            }
          ]);
+
+         // Send professional bilingual/default welcome communication
+         try {
+           const { sendOrbiTalkDirectSMS, sendOrbiTalkDirectEmail } = await import("./server/routes/talk.js");
+           const requestId = `welcome_cust_${data.user.id}_${Date.now()}`;
+           
+           const emailSubject = prefLang === "en" 
+             ? "Welcome to Orbi Shop! 🌟 (Verification & Welcome)"
+             : "Karibu Orbi Shop! 🌟 (Uhakiki na Karibu)";
+             
+           const swMessage = `Habari ${full_name},\n\nKaribu sana kwenye duka la kisasa la Orbi Shop! Akaunti yako ya mteja imefunguliwa na kuthibitishwa kikamilifu kulingana na sera zetu dhabiti za ununuzi salama.\n\nSasa unaweza kufurahia uzoefu wa kipekee wa ununuzi wa bidhaa bora na za kweli kutoka kwa wauzaji waliohakikiwa, kufurahia ofa maalum za uaminifu, na kupata ulinzi dhabiti wa malipo yako kupitia Escrow.\n\nUshirikiano wako unathaminiwa sana!\n\nKila la heri,\nHuduma kwa Wateja\nOrbi Shop Team`;
+           
+           const enMessage = `Dear ${full_name},\n\nA very warm welcome to the modern Orbi Shop marketplace! Your customer account has been successfully created and fully verified under our rigorous platform safety standards.\n\nYou are now ready to enjoy a tailored, premium shopping experience. Browse authentic catalog items from verified merchants, access exclusive loyalty discounts, and shop with absolute peace of mind backed by our secure Escrow payment protection.\n\nThank you for choosing Orbi Shop!\n\nBest regards,\nCustomer Delight Team\nOrbi Shop Team`;
+
+           const bodyMessage = prefLang === "en" ? enMessage : swMessage;
+
+           if (phone) {
+             const cleanPhone = phone.trim().replace(/\s+/g, "");
+             console.log(`[CUSTOMER SIGNUP] Dispatching welcome SMS to ${cleanPhone}`);
+             await sendOrbiTalkDirectSMS({
+               recipient: cleanPhone,
+               body: bodyMessage,
+               requestId
+             }).catch(smsErr => console.error("Error sending welcome customer SMS:", smsErr));
+           }
+
+           if (email && email.includes("@")) {
+             console.log(`[CUSTOMER SIGNUP] Dispatching welcome Email to ${email}`);
+             await sendOrbiTalkDirectEmail({
+               recipient: email.trim(),
+              ownerEmail: "shop@orbifinancial.com",
+              senderName: "Orbi Shop",
+               subject: emailSubject,
+               body: bodyMessage,
+               requestId
+             }).catch(emailErr => console.error("Error sending welcome customer Email:", emailErr));
+           }
+         } catch (notifyErr: any) {
+           console.error("Error setting up customer welcome trigger:", notifyErr.message);
+         }
       }
       res.json({ success: true, session: data.session, user: data.user });
     } catch (err: any) {

@@ -266,6 +266,74 @@ router.post("/ussd-push", async (req, res) => {
             }
           }
         }).catch(err => console.error("Error sending escrow funded SMS:", err));
+
+        // Retrieve seller of this order to send an active invite / notification
+        try {
+          let sellerId = "system";
+          if (oId.includes("-")) {
+            const parts = oId.split("-");
+            sellerId = parts[parts.length - 1];
+          } else {
+            const { data: dbItems } = await supabase.from("order_items").select("product_id").eq("order_id", dbOrder.id).limit(1);
+            if (dbItems && dbItems.length > 0) {
+              const { data: prodRow } = await supabase.from('products').select('seller_id').eq('id', dbItems[0].product_id).maybeSingle();
+              if (prodRow && prodRow.seller_id) {
+                sellerId = prodRow.seller_id;
+              }
+            }
+          }
+
+          let sEmail = "shop@orbifinancial.com";
+          let sPhone = null;
+          let sName = "Merchant Partner";
+          let sLang = "sw";
+          const { data: dbSeller } = await supabase.from('sellers').select('*').eq('id', sellerId).maybeSingle();
+          if (dbSeller) {
+            sEmail = dbSeller.email || dbSeller.invoice_email || sEmail;
+            sPhone = dbSeller.phone || dbSeller.invoice_phone || null;
+            sName = dbSeller.name || "Merchant Partner";
+            sLang = dbSeller.preferred_language === "en" ? "en" : "sw";
+          }
+
+          const { sendOrbiTalkDirectSMS, sendOrbiTalkDirectEmail } = await import("./talk.js");
+          const sellerInviteReqId = `seller-invite-escrow-${oId}-${Date.now()}`;
+
+          const sSubject = sLang === "en"
+            ? `[Order Funded] You are invited to fulfill Order #${oId} - Orbi Shop`
+            : `[Oda Imelipiwa] Unaalikwa Kuhudumia Oda #${oId} - Orbi Shop`;
+
+          const swSellerBody = `Habari ${sName},\n\nMteja ${cName} amekamilisha malipo ya oda mpya ${oId} ya kiasi cha TZS ${total.toLocaleString()}.\n\nMalipo haya yamepokelewa kikamilifu na kulindwa kwenye akaunti ya Escrow (Orbi PaySafe) na yatatolewa kwako pindi mteja akipokea mzigo wake.\n\nUnaalikwa kuingia kwenye mfumo kuthibitisha na kuanza usafirishaji mara moja kupitia Tovuti ya Wauzaji barua pepe yako ikiwa: ${sEmail}\n🔗 https://shop.orbifinancial.com/?seller-login=true\n\nAsante kwa kuingia mkataba na Orbi Shop!`;
+
+          const enSellerBody = `Dear ${sName},\n\nCustomer ${cName} has completed payment for order ${oId} worth TZS ${total.toLocaleString()}.\n\nThe funds are securely protected in Orbi PaySafe Escrow and will be fully disbursed after successful delivery.\n\nYou are invited to login to the Merchant Portal and start shipping immediately:\nEmail/Username: ${sEmail}\n🔗 https://shop.orbifinancial.com/?seller-login=true\n\nThank you for choosing Orbi Shop!`;
+
+          const combinedSellerBody = sLang === "en" ? enSellerBody : swSellerBody;
+
+          // Dispatch SMS invite
+          if (sPhone) {
+            const cleanSPhone = sPhone.trim().replace(/\s+/g, "");
+            console.log(`[PAYMENT COMPLETED] Inviting/Notifying seller via SMS at ${cleanSPhone}`);
+            sendOrbiTalkDirectSMS({
+              recipient: cleanSPhone,
+              body: combinedSellerBody,
+              requestId: `${sellerInviteReqId}-sms`
+            }).catch(smsErr => console.error("Error sending seller invite SMS on payment:", smsErr));
+          }
+
+          // Dispatch Email invite
+          if (sEmail && sEmail.includes("@")) {
+            console.log(`[PAYMENT COMPLETED] Inviting/Notifying seller via Email at ${sEmail}`);
+            sendOrbiTalkDirectEmail({
+              recipient: sEmail.trim(),
+              subject: sSubject,
+              body: combinedSellerBody,
+              requestId: `${sellerInviteReqId}-email`,
+              ownerEmail: "sellers@orbifinancial.com",
+              senderName: "Orbi Shop"
+            }).catch(emailErr => console.error("Error sending seller invite Email on payment:", emailErr));
+          }
+        } catch (sellerInviteErr: any) {
+          console.error("Failed to notify/invite seller on payment success:", sellerInviteErr.message);
+        }
       }
     } catch (notifyErr: any) {
       console.error("Failed to queue escrow funded Talk Gateway notification:", notifyErr.message);

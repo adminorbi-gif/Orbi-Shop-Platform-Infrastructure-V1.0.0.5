@@ -383,12 +383,13 @@ export function ApplySellerModal({
 
             <div className="mt-3">
               <label className="block text-xs font-bold text-slate-600 mb-1">
-                {lang === "sw" ? "Namba ya TIN (Kama ipo)" : "TIN Number (If Registered)"}
+                {lang === "sw" ? "Namba ya TIN (Lazima)" : "TIN Number (Mandatory)"}
               </label>
               <input
+                required
                 type="text"
                 maxLength={20}
-                placeholder={lang === "sw" ? "Namba ya utambulisho wa kodi (TIN)" : "Taxpayer Identification Number"}
+                placeholder={lang === "sw" ? "Weka Namba yako ya TIN ya biashara" : "Enter your business TIN number"}
                 value={tin}
                 onChange={(e) => setTin(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:border-orange-500 focus:bg-white font-mono text-sm transition-all"
@@ -397,10 +398,11 @@ export function ApplySellerModal({
           </div>
 
           <textarea
+            required
             placeholder={
               lang === "sw"
-                ? "Maelezo ya ziada ya biashara au bidhaa ambazo ungependa tusajili mapema (Hiari)"
-                : "List specific brands, warranties, or special logistics support you require (Optional)"
+                ? "Taja mifano ya bidhaa zako na maelezo unayotaka tusajili mapema (Lazima)"
+                : "Describe your specific catalog brands, models, products, or logistics you require (Mandatory)"
             }
             value={info}
             onChange={(e) => setInfo(e.target.value)}

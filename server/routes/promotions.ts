@@ -575,7 +575,10 @@ router.post("/send-targeted", async (req, res) => {
               recipient: target.email,
               subject: promoTitle || "Promotional News from Orbi Shop",
               body: bodyText,
-              requestId: `${reqIdBase}-email`
+              requestId: `${reqIdBase}-email`,
+              ownerEmail: "offers@orbifinancial.com",
+              senderName: "Orbi Shop",
+              messageType: "promotional"
             });
           } catch (emailErr: any) {
             emailResult = { success: false, error: emailErr.message };
@@ -876,7 +879,10 @@ Matokeo yawe kitu kimoja cha JSON safi:
               recipient: cohort.customerEmail,
               subject: emailSubject,
               body: emailBodyText,
-              requestId: `${reqUniqueId}-email`
+              requestId: `${reqUniqueId}-email`,
+              ownerEmail: "offers@orbifinancial.com",
+              senderName: "Orbi Shop",
+              messageType: "promotional"
             });
           } catch (e: any) {
             emailResult = { success: false, error: e.message };
@@ -1101,7 +1107,10 @@ router.post("/trigger-points-expiry", async (req, res) => {
               recipient: target.email,
               subject: emailSubject,
               body: emailBodyHTML,
-              requestId: `${reqUniqueId}-email`
+              requestId: `${reqUniqueId}-email`,
+              ownerEmail: "offers@orbifinancial.com",
+              senderName: "Orbi Shop",
+              messageType: "promotional"
             });
           } catch (e: any) {
             emailResult = { success: false, error: e.message };

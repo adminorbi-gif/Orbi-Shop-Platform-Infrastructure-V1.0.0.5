@@ -465,7 +465,9 @@ router.post("/", async (req, res) => {
                   recipient: cEmail,
                   subject: emailSubject,
                   body: emailBody,
-                  requestId: `order-flow-email-${activeStatus}-${oId}-${Date.now()}`
+                  requestId: `order-flow-email-${activeStatus}-${oId}-${Date.now()}`,
+                  ownerEmail: "shop@orbifinancial.com",
+                  senderName: "Orbi Shop"
                 }).catch(e => console.error(`Error sending flow Email for status ${activeStatus}:`, e))
               );
             }

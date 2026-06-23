@@ -24,6 +24,7 @@ import {
   PromotionalBanner,
 } from "../types";
 import { getProductPriceForQty } from "../utils/pricing";
+import { navigateTo } from "../utils/navigation";
 import {
   ShoppingCart,
   Search,
@@ -719,6 +720,23 @@ export default function ClientApp() {
     });
   const nicheScrollRef = useRef<HTMLDivElement>(null);
 
+  const syncStatesRef = useRef<any>({});
+  useEffect(() => {
+    syncStatesRef.current = {
+      selectedProduct,
+      viewSeller,
+      showCart,
+      showCheckout,
+      showTrackOrder,
+      showProfile,
+      profileInitialTab,
+      showAboutPage,
+      aboutPageTab,
+      showApplySellerModal,
+      showAuth
+    };
+  });
+
   const [likedProductIds, setLikedProductIds] = useState<string[]>(() => {
     try {
       const data = localStorage.getItem("orbi_liked_product_ids");
@@ -766,7 +784,26 @@ export default function ClientApp() {
   });
   const [showCart, setShowCart] = useState(false);
   const [showAuth, setShowAuth] = useState<"login" | "register" | null>(null);
-  const [showApplySellerModal, setShowApplySellerModal] = useState(false);
+  const [showApplySellerModal, setShowApplySellerModal] = useState(() => {
+    return window.location.search.includes("seller-signup=true") || window.location.search.includes("seller-apply=true") || window.location.hash.includes("#seller-signup") || window.location.hash.includes("#seller-apply");
+  });
+
+  useEffect(() => {
+    const handleUrlChangeOnClient = () => {
+      const activeSignup = window.location.search.includes("seller-signup=true") || window.location.search.includes("seller-apply=true") || window.location.hash.includes("#seller-signup") || window.location.hash.includes("#seller-apply");
+      if (activeSignup) {
+        setShowApplySellerModal(true);
+      }
+    };
+    window.addEventListener("popstate", handleUrlChangeOnClient);
+    const intervalClient = setInterval(handleUrlChangeOnClient, 400);
+
+    return () => {
+      window.removeEventListener("popstate", handleUrlChangeOnClient);
+      clearInterval(intervalClient);
+    };
+  }, []);
+
   const [showProfile, setShowProfile] = useState(false);
   const [showTrackOrder, setShowTrackOrder] = useState(false);
   const [profileInitialTab, setProfileInitialTab] = useState<
@@ -827,6 +864,177 @@ export default function ClientApp() {
     selectedArrangementWrap,
     sortOrder,
     activeUser?.id,
+  ]);
+
+  useEffect(() => {
+    // Bi-directional URL to React State router
+    const handleUrlToStateSync = () => {
+      const search = new URLSearchParams(window.location.search);
+      const hash = window.location.hash;
+      const cur = syncStatesRef.current;
+
+      // 1. Handle product selection
+      const prodId = search.get("product") || search.get("product-id");
+      if (prodId) {
+        if (!cur.selectedProduct || (cur.selectedProduct.id !== prodId && cur.selectedProduct.legacy_id !== prodId)) {
+          const found = products.find(p => p.id === prodId || p.legacy_id === prodId);
+          if (found) setSelectedProduct(found);
+        }
+      } else {
+        if (cur.selectedProduct) setSelectedProduct(null);
+      }
+
+      // 2. Handle seller storefront
+      const sellerId = search.get("seller") || search.get("seller-id") || search.get("seller-profile");
+      if (sellerId) {
+        if (!cur.viewSeller || cur.viewSeller.id !== sellerId) {
+          const found = sellers.find(s => s.id === sellerId);
+          if (found) {
+            setViewSeller(found);
+          } else {
+            // Guard against redundant object literal updates
+            if (!cur.viewSeller || cur.viewSeller.id !== sellerId || cur.viewSeller.store_name !== "Merchant Store") {
+              setViewSeller({ id: sellerId, store_name: "Merchant Store", name: "Merchant Partner" } as any);
+            }
+          }
+        }
+      } else {
+        if (cur.viewSeller) setViewSeller(null);
+      }
+
+      // 3. Handle Cart page
+      const hasCart = search.get("cart") === "true" || search.get("page") === "cart";
+      if (cur.showCart !== hasCart) setShowCart(hasCart);
+
+      // 4. Handle Checkout page
+      const hasCheckout = search.get("checkout") === "true" || search.get("page") === "checkout";
+      if (cur.showCheckout !== hasCheckout) setShowCheckout(hasCheckout);
+
+      // 5. Handle Track Order page
+      const hasTrack = search.get("track") === "true" || search.get("page") === "track";
+      if (cur.showTrackOrder !== hasTrack) setShowTrackOrder(hasTrack);
+
+      // 6. Handle Profile page and its active initial tab
+      const hasProfile = search.get("profile") === "true" || search.get("page") === "profile";
+      if (cur.showProfile !== hasProfile) setShowProfile(hasProfile);
+      const profTab = search.get("profile-tab") as any;
+      if (profTab && cur.profileInitialTab !== profTab) {
+        setProfileInitialTab(profTab);
+      }
+
+      // 7. Handle About page and its active tab
+      const hasAbout = search.get("about") === "true" || search.get("page") === "about" || hash.includes("#about");
+      if (cur.showAboutPage !== hasAbout) setShowAboutPage(hasAbout);
+      const abTab = search.get("about-tab") || "about";
+      if (abTab && cur.aboutPageTab !== abTab) {
+        setAboutPageTab(abTab);
+      }
+
+      // 8. Handle Seller application page / signup
+      const hasSignup = search.get("seller-signup") === "true" || search.get("seller-apply") === "true" || hash.includes("#seller-signup");
+      if (cur.showApplySellerModal !== hasSignup) setShowApplySellerModal(hasSignup);
+
+      // 9. Handle Auth login / register
+      const authVal = search.get("auth") as any;
+      if (authVal) {
+        if (cur.showAuth !== authVal) setShowAuth(authVal);
+      } else {
+        if (cur.showAuth) setShowAuth(null);
+      }
+    };
+
+    handleUrlToStateSync();
+    window.addEventListener("popstate", handleUrlToStateSync);
+    const pollerInst = setInterval(handleUrlToStateSync, 300);
+
+    return () => {
+      window.removeEventListener("popstate", handleUrlToStateSync);
+      clearInterval(pollerInst);
+    };
+  }, [products, sellers]);
+
+  // Sync React State changes to Browser URL parameters instantly
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    if (selectedProduct) {
+      params.set("product", selectedProduct.id || selectedProduct.legacy_id);
+    } else {
+      params.delete("product");
+      params.delete("product-id");
+    }
+
+    if (viewSeller) {
+      params.set("seller", viewSeller.id);
+    } else {
+      params.delete("seller");
+      params.delete("seller-id");
+    }
+
+    if (showCart) {
+      params.set("cart", "true");
+    } else {
+      params.delete("cart");
+    }
+
+    if (showCheckout) {
+      params.set("checkout", "true");
+    } else {
+      params.delete("checkout");
+    }
+
+    if (showTrackOrder) {
+      params.set("track", "true");
+    } else {
+      params.delete("track");
+    }
+
+    if (showProfile) {
+      params.set("profile", "true");
+      params.set("profile-tab", profileInitialTab);
+    } else {
+      params.delete("profile");
+      params.delete("profile-tab");
+    }
+
+    if (showAboutPage) {
+      params.set("about", "true");
+      params.set("about-tab", aboutPageTab);
+    } else {
+      params.delete("about");
+      params.delete("about-tab");
+    }
+
+    if (showApplySellerModal) {
+      params.set("seller-signup", "true");
+    } else {
+      params.delete("seller-signup");
+      params.delete("seller-apply");
+    }
+
+    if (showAuth) {
+      params.set("auth", showAuth);
+    } else {
+      params.delete("auth");
+    }
+
+    const currentSearch = window.location.search;
+    const newSearch = params.toString() ? `?${params.toString()}` : "";
+    if (currentSearch !== newSearch) {
+      window.history.pushState({}, "", window.location.pathname + newSearch + window.location.hash);
+    }
+  }, [
+    selectedProduct,
+    viewSeller,
+    showCart,
+    showCheckout,
+    showTrackOrder,
+    showProfile,
+    profileInitialTab,
+    showAboutPage,
+    aboutPageTab,
+    showApplySellerModal,
+    showAuth
   ]);
 
   useEffect(() => {
@@ -4977,99 +5185,121 @@ Zawadi ya Alama za Uaminifu zilizoongezwa kwenye kibeti chako: +${earned} Points
                 Orbi Platform
               </h4>
               <div className="flex flex-col items-center sm:items-start gap-3">
-                <button
-                  onClick={() => setShowAuth("register")}
-                  className="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-slate-300 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2"
+                <a
+                  href="/?seller-signup=true"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowApplySellerModal(true);
+                  }}
+                  className="bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-slate-300 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer inline-flex"
                 >
                   <ShieldCheck size={14} /> Apply as Seller
-                </button>
+                </a>
               </div>
             </div>
           </div>
 
           <div className="w-full px-4 sm:px-6 lg:px-8 mt-6">
             <div className="flex flex-wrap justify-center sm:justify-center items-center gap-x-4 gap-y-2 text-[11px] font-medium text-slate-500 max-w-5xl mx-auto">
-              <button
-                onClick={() => {
+              <a
+                href="/?about=true&about-tab=about"
+                onClick={(e) => {
+                  e.preventDefault();
                   setAboutPageTab("about");
                   setShowAboutPage(true);
                 }}
-                className="hover:text-amber-500 transition whitespace-nowrap"
+                className="hover:text-amber-500 transition whitespace-nowrap cursor-pointer"
               >
                 {lang === "sw" ? "Kuhusu Sisi" : "About Us"}
-              </button>
-              <button
-                onClick={() => {
+              </a>
+              <a
+                href="/?about=true&about-tab=how"
+                onClick={(e) => {
+                  e.preventDefault();
                   setAboutPageTab("how");
                   setShowAboutPage(true);
                 }}
-                className="hover:text-amber-500 transition whitespace-nowrap"
+                className="hover:text-amber-500 transition whitespace-nowrap cursor-pointer"
               >
                 {lang === "sw" ? "Jinsi Inavyofanya Kazi" : "How It Works"}
-              </button>
-              <button
-                onClick={() => {
+              </a>
+              <a
+                href="/?about=true&about-tab=security"
+                onClick={(e) => {
+                  e.preventDefault();
                   setAboutPageTab("security");
                   setShowAboutPage(true);
                 }}
-                className="hover:text-amber-500 transition whitespace-nowrap"
+                className="hover:text-amber-500 transition whitespace-nowrap cursor-pointer"
               >
                 {lang === "sw" ? "Kituo cha Usalama" : "Security Center"}
-              </button>
-              <button
-                onClick={() => {
+              </a>
+              <a
+                href="/?about=true&about-tab=buyer"
+                onClick={(e) => {
+                  e.preventDefault();
                   setAboutPageTab("buyer");
                   setShowAboutPage(true);
                 }}
-                className="hover:text-amber-500 transition whitespace-nowrap"
+                className="hover:text-amber-500 transition whitespace-nowrap cursor-pointer"
               >
                 {lang === "sw" ? "Ulinzi wa Mnunuzi" : "Buyer Protection"}
-              </button>
-              <button
-                onClick={() => {
+              </a>
+              <a
+                href="/?about=true&about-tab=seller"
+                onClick={(e) => {
+                  e.preventDefault();
                   setAboutPageTab("seller");
                   setShowAboutPage(true);
                 }}
-                className="hover:text-amber-500 transition whitespace-nowrap"
+                className="hover:text-amber-500 transition whitespace-nowrap cursor-pointer"
               >
                 {lang === "sw" ? "Ulinzi wa Muuzaji" : "Seller Protection"}
-              </button>
-              <button
-                onClick={() => {
+              </a>
+              <a
+                href="/?about=true&about-tab=terms"
+                onClick={(e) => {
+                  e.preventDefault();
                   setAboutPageTab("terms");
                   setShowAboutPage(true);
                 }}
-                className="hover:text-amber-500 transition whitespace-nowrap"
+                className="hover:text-amber-500 transition whitespace-nowrap cursor-pointer"
               >
                 {lang === "sw" ? "Vigezo na Masharti" : "Terms & Conditions"}
-              </button>
-              <button
-                onClick={() => {
+              </a>
+              <a
+                href="/?about=true&about-tab=escrow"
+                onClick={(e) => {
+                  e.preventDefault();
                   setAboutPageTab("escrow");
                   setShowAboutPage(true);
                 }}
-                className="hover:text-amber-500 transition whitespace-nowrap"
+                className="hover:text-amber-500 transition whitespace-nowrap cursor-pointer"
               >
                 {lang === "sw" ? "Sera ya Malipo & Escrow" : "Payment & Escrow"}
-              </button>
-              <button
-                onClick={() => {
+              </a>
+              <a
+                href="/?about=true&about-tab=privacy"
+                onClick={(e) => {
+                  e.preventDefault();
                   setAboutPageTab("privacy");
                   setShowAboutPage(true);
                 }}
-                className="hover:text-amber-500 transition whitespace-nowrap"
+                className="hover:text-amber-500 transition whitespace-nowrap cursor-pointer"
               >
                 {lang === "sw" ? "Sera ya Faragha" : "Privacy Policy"}
-              </button>
-              <button
-                onClick={() => {
+              </a>
+              <a
+                href="/?about=true&about-tab=contact"
+                onClick={(e) => {
+                  e.preventDefault();
                   setAboutPageTab("contact");
                   setShowAboutPage(true);
                 }}
-                className="hover:text-amber-500 transition whitespace-nowrap"
+                className="hover:text-amber-500 transition whitespace-nowrap cursor-pointer"
               >
                 {lang === "sw" ? "Wasiliana Nasi" : "Contact Us"}
-              </button>
+              </a>
             </div>
           </div>
 
@@ -5094,8 +5324,12 @@ Zawadi ya Alama za Uaminifu zilizoongezwa kwenye kibeti chako: +${earned} Points
             </div>
             <div className="flex gap-4">
               <a
-                href="/?admin=true"
-                className="hover:text-white font-bold transition flex items-center gap-2 outline-none"
+                href="/?seller-login=true"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigateTo("?seller-login=true");
+                }}
+                className="hover:text-white font-bold transition flex items-center gap-2 outline-none cursor-pointer"
               >
                 <Store size={12} /> Admin
               </a>
@@ -9317,6 +9551,7 @@ function AuthModal({
                   role: "client",
                   phone: currentPhone,
                   tin: tin.trim(),
+                  preferredLanguage: lang,
                 }),
               });
               const data = await res.json();

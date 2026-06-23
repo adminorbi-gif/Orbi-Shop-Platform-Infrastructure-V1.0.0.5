@@ -68,6 +68,59 @@ router.post("/", async (req, res) => {
     }
 
     if (result.error) throw result.error;
+
+    // Dispatch automatic confirmation for merchant applications
+    const textMsg = msg.message || "";
+    if (textMsg.includes("Maombi ya Kuwa Muuzaji")) {
+      let matchedEmail = "";
+      const lines = textMsg.split("\n");
+      for (const line of lines) {
+        if (line.toLowerCase().includes("barua pepe:")) {
+          matchedEmail = line.split(/barua pepe:/i)[1]?.trim() || "";
+        }
+      }
+      
+      const applicantName = msg.name || "Mpendwa Muuzaji";
+      const applicantPhone = msg.phone;
+      
+      try {
+        const { sendOrbiTalkDirectSMS, sendOrbiTalkDirectEmail } = await import("./talk.js");
+        const requestId = `seller_ack_${Date.now()}`;
+        
+        const emailSubject = "Ombi Lako la Muuzaji Limepokelewa / Seller Application Received - Orbi Shop";
+        
+        const swMessage = `Habari ${applicantName},\n\nAsante kwa kutuma ombi lako la kuwa muuzaji kwenye mfumo wa Orbi Shop! Taarifa zako zote zimepokelewa kikamilifu kulingana na sera dhabiti za biashara yetu.\n\nIdara yetu ya usajili inashughulikia ombi lako na itakutafuta ndani ya saa 24 kwa ajili ya usajili kamili na kukupatia maelekezo ya akaunti yako.\n\nUshirikiano wako unathaminiwa sana!\n\nAsante,\nOrbi Shop Merchant Board`;
+        
+        const enMessage = `Dear ${applicantName},\n\nThank you for submitting your merchant registration on Orbi Shop! Your records have been received in accordance with our stringent platform standards and policies.\n\nOur onboarding team is actively reviewing your application. We will contact you within 24 hours to complete your verification and hand over your portal credentials.\n\nThank you for choosing to do business with Orbi Shop!\n\nBest regards,\nOrbi Shop Merchant Board`;
+        
+        const combinedBody = `${swMessage}\n\n====================\n\n${enMessage}`;
+
+        if (applicantPhone) {
+          const cleanPhone = applicantPhone.trim().replace(/\s+/g, "");
+          console.log(`[SELLER REGISTRATION ACK] Dispatching auto-response SMS to ${cleanPhone}`);
+          await sendOrbiTalkDirectSMS({
+            recipient: cleanPhone,
+            body: combinedBody,
+            requestId
+          }).catch(smsErr => console.error("Error dispatching seller application SMS ack:", smsErr));
+        }
+        
+        if (matchedEmail && matchedEmail.includes("@")) {
+          console.log(`[SELLER REGISTRATION ACK] Dispatching auto-response Email to ${matchedEmail}`);
+          await sendOrbiTalkDirectEmail({
+            recipient: matchedEmail.trim(),
+            subject: emailSubject,
+            body: combinedBody,
+            requestId,
+            ownerEmail: "sellers@orbifinancial.com",
+            senderName: "Orbi Shop"
+          }).catch(emailErr => console.error("Error dispatching seller application Email ack:", emailErr));
+        }
+      } catch (evtErr) {
+        console.error("Error during automated seller receipt notification dispatch:", evtErr);
+      }
+    }
+
     res.json({ success: true });
   } catch (error: any) {
     console.error("POST /api/v1/messages error:", error.message);
