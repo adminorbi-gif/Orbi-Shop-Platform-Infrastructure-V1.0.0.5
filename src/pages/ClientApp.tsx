@@ -5690,6 +5690,10 @@ Zawadi ya Alama za Uaminifu zilizoongezwa kwenye kibeti chako: +${earned} Points
               setActiveUser(u);
               setShowAuth(null);
             }}
+            onApplySeller={() => {
+              setShowAuth(null);
+              setShowApplySellerModal(true);
+            }}
           />
         )}
         {showAuth === "register" && (
@@ -5705,6 +5709,10 @@ Zawadi ya Alama za Uaminifu zilizoongezwa kwenye kibeti chako: +${earned} Points
             onSuccess={(u) => {
               setActiveUser(u);
               setShowAuth(null);
+            }}
+            onApplySeller={() => {
+              setShowAuth(null);
+              setShowApplySellerModal(true);
             }}
           />
         )}
@@ -6047,9 +6055,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
             </div>
 
             {p.warranty && (
-              <div className="bg-emerald-50/95 text-emerald-700 border border-emerald-200/60 backdrop-blur-xs text-[7px] sm:text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-xs flex items-center gap-0.5 w-fit">
-                <ShieldCheck size={7} className="sm:w-2.5 sm:h-2.5" />
-                {p.warranty}
+              <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white border border-amber-600/30 backdrop-blur-xs text-[7px] sm:text-[8px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1 w-fit transform hover:scale-105 transition-all">
+                <Award size={8} className="sm:w-3 sm:h-3 text-white" />
+                <span>{p.warranty}</span>
               </div>
             )}
           </div>
@@ -8858,6 +8866,7 @@ function AuthModal({
   onSwitch,
   onSuccess,
   onOpenAbout,
+  onApplySeller,
 }: any) {
   const { showAlert } = useDialog();
   const [localMode, setLocalMode] = useState<
@@ -9277,38 +9286,58 @@ function AuthModal({
             };
           }
         } else {
-          // Step 2: Use backend for registration
+          // Step 2: Use backend for registration (or save seller application message directly to trigger pending admin requests)
           try {
-            const res = await fetch("/api/auth/signup", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                email: authEmail,
-                password,
-                full_name: name,
-                role: "client",
-                phone: currentPhone,
-                tin: tin.trim(),
-              }),
-            });
-            const data = await res.json();
-
-            if (!data.success) {
-              authError = { message: data.error };
-            } else {
-              const u = {
-                id:
-                  data.user?.id ||
-                  data.session?.user?.id ||
-                  Math.random().toString(36),
-                name: name,
+            if (selectedRole === "seller") {
+              await db.saveMessage({
+                id: "",
+                name: name.trim(),
                 phone: currentPhone || "",
-                email: authEmail,
-                registeredAt: Date.now(),
-                tin: tin.trim() || "",
-              };
-              localStorage.setItem("Orbishop_customers", JSON.stringify(u));
-              onSuccess(u);
+                message: `Maombi ya Kuwa Muuzaji:\nJina Kamili: ${name.trim()}\nBarua pepe: ${authEmail}\nDuka: ${name.trim()}\nMaelezo zaidi: TIN: ${tin.trim()}, Password: ${password.trim()}`,
+                date: Date.now()
+              });
+
+              showAlert(
+                lang === "sw"
+                  ? "Ombi lako la kuwa muuzaji limewasilishwa kikamilifu! Msimamizi atakagua ombi hili na kukufungulia akaunti yako hivi punde."
+                  : "Your merchant registration request has been submitted successfully! An administrator will review and activate your account shortly.",
+                "success",
+              );
+              setLocalMode("login");
+              setLoading(false);
+              return;
+            } else {
+              const res = await fetch("/api/auth/signup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  email: authEmail,
+                  password,
+                  full_name: name,
+                  role: "client",
+                  phone: currentPhone,
+                  tin: tin.trim(),
+                }),
+              });
+              const data = await res.json();
+
+              if (!data.success) {
+                authError = { message: data.error };
+              } else {
+                const u = {
+                  id:
+                    data.user?.id ||
+                    data.session?.user?.id ||
+                    Math.random().toString(36),
+                  name: name,
+                  phone: currentPhone || "",
+                  email: authEmail,
+                  registeredAt: Date.now(),
+                  tin: tin.trim() || "",
+                };
+                localStorage.setItem("Orbishop_customers", JSON.stringify(u));
+                onSuccess(u);
+              }
             }
           } catch (e: any) {
             authError = { message: e.message };
@@ -9701,8 +9730,12 @@ function AuthModal({
                   : `Login as ${selectedRole === "buyer" ? "Buyer" : selectedRole === "seller" ? "Seller" : "Staff"}`
                 : localMode === "register"
                   ? lang === "sw"
-                    ? "Jisajili na Uanze Ununuzi"
-                    : "Register & Start Shopping"
+                    ? selectedRole === "seller"
+                      ? "Mwasilishe Maombi (Apply)"
+                      : "Jisajili na Uanze Ununuzi"
+                    : selectedRole === "seller"
+                      ? "Submit Seller Request (Apply)"
+                      : "Register & Start Shopping"
                   : localMode === "forgot"
                     ? lang === "sw"
                       ? "Tafuta na Uhakiki Akaunti"
@@ -9753,22 +9786,40 @@ function AuthModal({
           )}
 
           <div className="mt-4 text-center text-xs text-slate-500 font-medium">
-            {localMode === "login" && selectedRole === "buyer" && (
+            {localMode === "login" && (selectedRole === "buyer" || selectedRole === "seller") && (
               <div className="space-y-4">
                 <div>
-                  {lang === "sw" ? "Hauna akaunti?" : "Do not have an account?"}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLocalMode("register");
-                      onSwitch();
-                      setPassword("");
-                      setPasswordConfirm("");
-                    }}
-                    className="text-orange-600 ml-1 font-bold hover:underline cursor-pointer"
-                  >
-                    {lang === "sw" ? "Jisajili Hapa" : "Register Here"}
-                  </button>
+                  {selectedRole === "seller" ? (
+                    <>
+                      {lang === "sw" ? "Hauna akaunti ya muuzaji?" : "Do not have a merchant account?"}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLocalMode("register");
+                          setPassword("");
+                          setPasswordConfirm("");
+                        }}
+                        className="text-emerald-600 ml-1 font-bold hover:underline cursor-pointer"
+                      >
+                        {lang === "sw" ? "Sajili / Omba Hapa" : "Register / Apply Here"}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {lang === "sw" ? "Hauna akaunti?" : "Do not have an account?"}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLocalMode("register");
+                          setPassword("");
+                          setPasswordConfirm("");
+                        }}
+                        className="text-orange-600 ml-1 font-bold hover:underline cursor-pointer"
+                      >
+                        {lang === "sw" ? "Jisajili Hapa" : "Register Here"}
+                      </button>
+                    </>
+                  )}
                 </div>
 
                 {/* Discrete partner login footers */}
@@ -9777,19 +9828,39 @@ function AuthModal({
                     {lang === "sw" ? "Mifumo ya Washirika" : "Partner Portals"}
                   </span>
                   <div className="flex items-center gap-3 text-xs font-bold mt-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedRole("seller");
-                        setEmailOrPhone("");
-                      }}
-                      className="text-emerald-600 hover:text-emerald-700 hover:underline cursor-pointer flex items-center gap-1 bg-transparent border-none"
-                    >
-                      <Store size={14} />
-                      <span>
-                        {lang === "sw" ? "Jopo la Muuzaji" : "Seller Portal"}
-                      </span>
-                    </button>
+                    {selectedRole !== "buyer" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedRole("buyer");
+                          setEmailOrPhone("");
+                        }}
+                        className="text-orange-600 hover:text-orange-700 hover:underline cursor-pointer flex items-center gap-1 bg-transparent border-none"
+                      >
+                        <User size={14} />
+                        <span>
+                          {lang === "sw" ? "Jopo la Mteja" : "Customer Portal"}
+                        </span>
+                      </button>
+                    )}
+                    {selectedRole !== "buyer" && selectedRole !== "seller" && (
+                      <span className="text-slate-300 select-none">|</span>
+                    )}
+                    {selectedRole !== "seller" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedRole("seller");
+                          setEmailOrPhone("");
+                        }}
+                        className="text-emerald-600 hover:text-emerald-700 hover:underline cursor-pointer flex items-center gap-1 bg-transparent border-none"
+                      >
+                        <Store size={14} />
+                        <span>
+                          {lang === "sw" ? "Jopo la Muuzaji" : "Seller Portal"}
+                        </span>
+                      </button>
+                    )}
                     <span className="text-slate-300 select-none">|</span>
                     <button
                       type="button"
@@ -9809,12 +9880,14 @@ function AuthModal({
               </div>
             )}
 
-            {localMode === "login" && selectedRole !== "buyer" && (
-              <p className="text-[10px] text-slate-400 font-medium leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-200/50">
-                {lang === "sw"
-                  ? "Sajili au ukaribisho wa wauzaji hufanyika kupitia jopo kuu la uongozi wa mtandao. Wasiliana na msimamizi kupata idhini."
-                  : "Merchant onboarding & official roles require registration and verification by System Operations. Contact admin for approvals."}
-              </p>
+            {localMode === "login" && selectedRole === "staff" && (
+              <div className="space-y-3 mt-2 bg-slate-50 p-4 rounded-xl border border-slate-200/55 text-center">
+                <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
+                  {lang === "sw"
+                    ? "Sajili au ukaribisho wa wafanyakazi na watawala hufanyika kupitia jopo kuu la uongozi wa mtandao. Wasiliana na msimamizi kupata idhini."
+                    : "Staff onboarding & official administrative roles require registration and verification by System Operations. Contact admin for approvals."}
+                </p>
+              </div>
             )}
             {localMode === "register" && (
               <>

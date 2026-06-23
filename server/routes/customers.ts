@@ -23,7 +23,8 @@ router.get("/", async (req, res) => {
       pointsExpiryAt: c.points_expiry_at || new Date(Date.now() + (1000 * 60 * 60 * 24 * (index % 3 === 0 ? 7 : (index % 3 === 1 ? -2 : 25)))).toISOString(),
       deleteRequested: c.deleteRequested !== undefined ? c.deleteRequested : (c.delete_requested || false),
       preferredLanguage: c.preferred_language || 'sw',
-      preferred_language: c.preferred_language || 'sw'
+      preferred_language: c.preferred_language || 'sw',
+      tin: c.tin || ''
     }));
 
     res.json({ success: true, data: mapped });

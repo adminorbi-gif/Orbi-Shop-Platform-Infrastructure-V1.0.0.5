@@ -1756,6 +1756,28 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     }).length;
   }, [messages]);
 
+  const sellersNotificationCount = useMemo(() => {
+    return (messages || [])
+      .filter((msg) => msg.message && msg.message.includes("Maombi ya Kuwa Muuzaji"))
+      .filter((msg) => {
+        let email = "";
+        const lines = msg.message.split("\n");
+        lines.forEach((line) => {
+          if (line.toLowerCase().includes("barua pepe:")) {
+            email = line.split(/barua pepe:/i)[1]?.trim() || "";
+          }
+        });
+        const lowerEmail = email.toLowerCase().trim();
+        if (!lowerEmail || lowerEmail === "n/a" || !lowerEmail.includes("@")) {
+          return true;
+        }
+        const isAlreadySeller = sellers?.some(
+          (s) => s.email?.toLowerCase().trim() === lowerEmail
+        );
+        return !isAlreadySeller;
+      }).length;
+  }, [messages, sellers]);
+
   const topSellingProducts = useMemo(() => {
     const counts = orders.reduce(
       (acc, order) => {
@@ -2720,6 +2742,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                       id: "sellers",
                       label: lang === "sw" ? "Wauzaji" : "Sellers",
                       icon: Store,
+                      badge: sellersNotificationCount,
                     },
                     { id: "staff", label: "Staff", icon: Users },
                     { id: "payouts", label: "Payouts", icon: DollarSign },
@@ -2878,7 +2901,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                     { id: "campaigns", label: "Kampeni", icon: Megaphone },
                     { id: "coupons", label: "Coupon", icon: Ticket },
                     { id: "ads", label: "Ads", icon: Megaphone },
-                    { id: "sellers", label: "Wauzaji", icon: Store },
+                    { id: "sellers", label: "Wauzaji", icon: Store, badge: sellersNotificationCount },
                     { id: "staff", label: "Staff", icon: Users },
                     { id: "payouts", label: "Payouts", icon: DollarSign },
                     { id: "notifications", label: "Noti", icon: Bell },
@@ -3643,6 +3666,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                   products={products}
                   orders={orders}
                   currentStaff={currentStaff}
+                  messages={messages}
                 />
               </div>
             )}
@@ -4578,18 +4602,130 @@ function SellersAdmin({
   products = [],
   orders = [],
   currentStaff,
+  messages = [],
 }: {
   sellers: SellerProfile[];
   setSellers: any;
   products?: Product[];
   orders?: Order[];
   currentStaff?: any;
+  messages?: Message[];
 }) {
   const { lang } = useI18n();
   const { showAlert } = useDialog();
   const [subTab, setSubTab] = useState<"sellers" | "plans" | "analytics">(
     "analytics",
   );
+
+  // Parse swahili and/or english fields for new vendor requests from customer support chat
+  // Parse swahili and/or english fields for new vendor requests from customer support chat
+  const parseSellerApplication = (text: string) => {
+    if (!text || !text.includes("Maombi ya Kuwa Muuzaji")) return null;
+
+    const lines = text.split("\n");
+    let fullName = "";
+    let email = "";
+    let storeName = "";
+    let description = "";
+    let proposedPassword = "123456";
+
+    lines.forEach((line) => {
+      const lower = line.toLowerCase();
+      if (lower.includes("jina kamili:")) {
+        fullName = line.split(/jina kamili:/i)[1]?.trim() || "";
+      } else if (lower.includes("barua pepe:")) {
+        email = line.split(/barua pepe:/i)[1]?.trim() || "";
+      } else if (lower.includes("duka:")) {
+        storeName = line.split(/duka:/i)[1]?.trim() || "";
+      } else if (lower.includes("maelezo zaidi:")) {
+        const details = line.split(/maelezo zaidi:/i)[1]?.trim() || "";
+        if (details.includes("Password:")) {
+          const passParts = details.split("Password:");
+          description = passParts[0]?.trim() || "";
+          proposedPassword = passParts[1]?.trim() || "123456";
+        } else {
+          description = details;
+        }
+      }
+    });
+
+    return {
+      fullName: fullName || "N/A",
+      email: email || "N/A",
+      storeName: storeName || fullName || "N/A",
+      description: description || "Requested via chat application form.",
+      proposedPassword,
+    };
+  };
+
+  const pendingRequests = useMemo(() => {
+    return (messages || [])
+      .filter((msg) => msg.message && msg.message.includes("Maombi ya Kuwa Muuzaji"))
+      .map((msg) => {
+        const appData = parseSellerApplication(msg.message);
+        if (!appData) return null;
+        return {
+          ...appData,
+          id: msg.id,
+          date: msg.date,
+          phone: msg.phone || "N/A",
+        };
+      })
+      .filter((app): app is any => !!app)
+      .filter((app) => {
+        const isAlreadySeller = sellers?.some(
+          (s) => s.email?.toLowerCase().trim() === app.email.toLowerCase().trim()
+        );
+        return !isAlreadySeller;
+      });
+  }, [messages, sellers]);
+
+  // Approving seller states
+  const [approvingSellerData, setApprovingSellerData] = useState<{
+    fullName: string;
+    email: string;
+    storeName: string;
+    description: string;
+    proposedPassword?: string;
+  } | null>(null);
+  const [approvePassword, setApprovePassword] = useState("");
+  const [approveForceChange, setApproveForceChange] = useState(true);
+
+  const handleApproveSeller = (app: {
+    fullName: string;
+    email: string;
+    storeName: string;
+    description: string;
+    proposedPassword?: string;
+  }) => {
+    const lowerEmail = app.email.toLowerCase().trim();
+    if (!lowerEmail || lowerEmail === "n/a" || !lowerEmail.includes("@")) {
+      showAlert(
+        lang === "sw"
+          ? "Barua pepe haipo au si sahihi!"
+          : "Application has an invalid or missing email address!",
+        "error"
+      );
+      return;
+    }
+
+    const exists = sellers.some(
+      (s) => s.email && s.email.toLowerCase().trim() === lowerEmail
+    );
+    if (exists) {
+      showAlert(
+        lang === "sw"
+          ? "Muuzaji mwenye barua pepe hii amesajiliwa tayari!"
+          : "A seller with this email address already exists!",
+        "error"
+      );
+      return;
+    }
+
+    setApprovingSellerData(app);
+    setApprovePassword(app.proposedPassword || "123456"); // Default proposed or temporary password
+    setApproveForceChange(true);
+  };
 
   // Plan States
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
@@ -4881,6 +5017,75 @@ function SellersAdmin({
 
       {subTab === "sellers" && (
         <>
+          {pendingRequests.length > 0 && (
+            <div className="mb-8 bg-gradient-to-br from-amber-500/10 via-yellow-500/5 to-amber-500/5 border border-amber-300/60 rounded-3xl p-6 shadow-xs relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full -mr-10 -mt-10 blur-xl pointer-events-none" />
+              <div className="flex items-center gap-3 mb-5">
+                <div className="bg-amber-500/20 p-2.5 rounded-xl text-amber-700 font-bold shrink-0 shadow-xxs">
+                  <Store size={20} className="animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
+                    {lang === "sw"
+                      ? "Maombi mapya ya kujiunga kama Muuzaji"
+                      : "New Merchant Registration Applications"}
+                    <span className="bg-amber-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                      {lang === "sw" ? "Inasubiri Idhini" : "Awaiting Review"}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {lang === "sw"
+                      ? `Kuna maombi ${pendingRequests.length} mapya ya Wauzaji yanayosubiri kudhinishwa hapa`
+                      : `There are ${pendingRequests.length} merchant applications ready to review & activate`}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {pendingRequests.map((req: any) => (
+                  <div key={req.id} className="bg-white border border-amber-200/50 p-5 rounded-2xl shadow-sm flex flex-col justify-between hover:shadow transition-all duration-200">
+                    <div className="space-y-2.5 text-xs">
+                      <div>
+                        <span className="font-extrabold text-slate-800 text-base block tracking-tight line-clamp-1">{req.storeName}</span>
+                        <span className="text-[10px] text-slate-400 font-mono block mt-0.5">{lang === "sw" ? "Tuma Ombi:" : "Form ID:"} {req.id}</span>
+                      </div>
+                      
+                      <div className="space-y-1 bg-slate-50/50 p-3 rounded-xl border border-slate-100 font-medium text-slate-700">
+                        <p className="truncate">
+                          <span className="text-slate-400 font-bold font-sans">{lang === "sw" ? "Muombaji: " : "Applicant: "}</span>
+                          {req.fullName}
+                        </p>
+                        <p className="font-mono truncate">
+                          <span className="text-slate-400 font-bold font-sans">{lang === "sw" ? "Pepe: " : "Email: "}</span>
+                          {req.email}
+                        </p>
+                        <p className="font-mono">
+                          <span className="text-slate-400 font-bold font-sans">{lang === "sw" ? "Simu: " : "Phone: "}</span>
+                          {req.phone}
+                        </p>
+                      </div>
+
+                      {req.description && (
+                        <p className="text-slate-500 italic text-[11px] leading-relaxed line-clamp-2">
+                          "{req.description}"
+                        </p>
+                      )}
+                    </div>
+                    <div className="mt-5 pt-3 border-t border-slate-100 flex justify-end">
+                      <button
+                        onClick={() => handleApproveSeller(req)}
+                        className="bg-emerald-600 text-white hover:bg-emerald-700 px-4.5 py-2 rounded-xl text-xs font-black shadow-xs hover:shadow transition-all flex items-center gap-1 cursor-pointer font-sans"
+                      >
+                        <Check size={14} />
+                        {lang === "sw" ? "Uidhinishe Sasa" : "Approve & Activate"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-slate-800">
               {lang === "sw" ? "Simamia Wauzaji" : "Manage Sellers"}
@@ -5514,6 +5719,150 @@ function SellersAdmin({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Seller Approval confirmation Modal inside SellersAdmin */}
+      {approvingSellerData && (
+        <div className="fixed inset-0 bg-black/60 z-[250] flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-[2rem] p-8 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-black text-slate-800">
+                {lang === "sw"
+                  ? "Thibitisha Muuzaji"
+                  : "Confirm Seller Approval"}
+              </h3>
+              <button
+                onClick={() => setApprovingSellerData(null)}
+                className="text-slate-400 hover:text-slate-600 transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-150 space-y-1.5 text-xs text-slate-700 font-bold">
+                <p>
+                  <span className="text-slate-400">
+                    {lang === "sw" ? "Jina la Duka:" : "Store Name:"}
+                  </span>{" "}
+                  {approvingSellerData.storeName}
+                </p>
+                <p>
+                  <span className="text-slate-400">
+                    {lang === "sw" ? "Barua Pepe:" : "Email Address:"}
+                  </span>{" "}
+                  {approvingSellerData.email}
+                </p>
+                <p>
+                  <span className="text-slate-400">
+                    {lang === "sw" ? "Mwombaji:" : "Applicant Name:"}
+                  </span>{" "}
+                  {approvingSellerData.fullName}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">
+                  {lang === "sw"
+                    ? "Weka Nenosiri la Kwanza la Muuzaji"
+                    : "Set Custom Initial Password"}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={approvePassword}
+                  onChange={(e) => setApprovePassword(e.target.value)}
+                  className="w-full border border-slate-300 p-3.5 rounded-xl outline-none focus:border-emerald-500 font-mono text-sm bg-slate-50"
+                  placeholder="e.g. customPass123"
+                />
+              </div>
+
+              <div className="bg-slate-50 p-4 border border-slate-200 rounded-xl">
+                <label className="flex items-center gap-3 font-bold text-slate-800 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={approveForceChange}
+                    onChange={(e) =>
+                      setApproveForceChange(e.target.checked)
+                    }
+                    className="w-5 h-5 accent-emerald-500 rounded cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <p className="font-bold">
+                      {lang === "sw"
+                        ? "Lazimisha mabadiliko ya nenosiri"
+                        : "Force password change on login"}
+                    </p>
+                    <p className="text-slate-400 font-normal">
+                      {lang === "sw"
+                        ? "Mteja atatakiwa kuweka upya nenosiri akiingia"
+                        : "Seller must reset this temporary password upon entry"}
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setApprovingSellerData(null)}
+                  className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 hover:bg-slate-200 transition rounded-xl font-bold"
+                >
+                  {lang === "sw" ? "Ghairi" : "Cancel"}
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (
+                      !approvePassword ||
+                      approvePassword.trim().length < 6
+                    ) {
+                      showAlert(
+                        lang === "sw"
+                          ? "Nenosiri lazima liwe na herufi angalau 6."
+                          : "Password must be at least 6 characters.",
+                        "error"
+                      );
+                      return;
+                    }
+                    const rawData = approvingSellerData;
+                    setApprovingSellerData(null);
+
+                    const lowerEmail = rawData.email.toLowerCase().trim();
+                    const tempId = "SLR-" + Date.now().toString(36);
+                    const newSeller: SellerProfile = {
+                      id: tempId,
+                      name: rawData.storeName,
+                      email: lowerEmail,
+                      description:
+                        rawData.description ||
+                        `Registered automatically from verification chat.`,
+                      status: "active",
+                      isPro: false,
+                      password: approvePassword.trim(),
+                      isApproved: true,
+                      mustChangePassword: approveForceChange,
+                    };
+
+                    const updated = [...sellers, newSeller];
+                    setSellers(updated);
+                    await db.saveSellers(updated);
+
+                    showAlert(
+                      lang === "sw"
+                        ? `Muuzaji "${newSeller.name}" amethibitishwa na nenosiri limewekwa kabisa!`
+                        : `Seller "${newSeller.name}" approved successfully with the custom password!`,
+                      "success"
+                    );
+                  }}
+                  className="flex-1 px-4 py-3 bg-emerald-600 text-white hover:bg-emerald-700 transition rounded-xl font-bold"
+                >
+                  {lang === "sw" ? "Thibitisha" : "Confirm & Approve"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

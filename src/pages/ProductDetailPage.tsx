@@ -19,6 +19,7 @@ import {
   Tag,
   Info,
   ShieldCheck,
+  Award,
   Package,
   Zap,
   ChevronDown,
@@ -595,10 +596,12 @@ export default function ProductDetailPage({
                   </span>
                 </div>
 
-                {product.warranty && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 border border-indigo-100 text-indigo-700 shadow-sm transition-all hover:shadow-md cursor-help" title={lang === "sw" ? "Muda wa Dhamana (Warranty)" : "Warranty Duration"}>
-                    <ShieldCheck size={13} className="shrink-0" />
-                    <span className="uppercase tracking-wide">{product.warranty}</span>
+                 {product.warranty && (
+                  <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black bg-gradient-to-r from-amber-500/10 via-yellow-500/15 to-amber-500/10 border border-amber-500/30 text-amber-700 shadow-xs hover:shadow-md transition-all hover:scale-105 duration-200 cursor-help" title={lang === "sw" ? "Muda wa Dhamana (Warranty)" : "Warranty Duration"}>
+                    <Award size={13.5} className="text-amber-500 shrink-0" />
+                    <span className="uppercase tracking-widest text-[10px] font-bold">
+                      {lang === "sw" ? `DHAMANA: ${product.warranty}` : `WARRANTY: ${product.warranty}`}
+                    </span>
                   </div>
                 )}
               </div>
@@ -677,12 +680,12 @@ export default function ProductDetailPage({
                   </div>
                 )}
                 {product.warranty && (
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/60 rounded-lg px-2.5 py-1 w-fit mt-2">
-                    <ShieldCheck size={14} className="text-indigo-500 shrink-0" />
-                    <span>
+                  <div className="flex items-center gap-2 text-xs font-extrabold text-amber-800 bg-amber-50/70 border border-amber-200/75 rounded-lg px-3 py-1.5 w-fit mt-2 shadow-xxs">
+                    <Award size={14.5} className="text-amber-600 shrink-0" />
+                    <span className="font-sans text-[11px] font-bold">
                       {lang === "sw"
-                        ? `Dhamana (Warranty): ${product.warranty}`
-                        : `Warranty Included: ${product.warranty}`}
+                        ? `Dhamana Iliyothibitishwa: ${product.warranty}`
+                        : `Certified Warranty: ${product.warranty}`}
                     </span>
                   </div>
                 )}

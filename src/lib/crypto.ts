@@ -62,11 +62,17 @@ export const decryptIfEncrypted = (text: any): any => {
   }
   
   const parts = cleanText.split(':');
-  if (parts.length === 3 && parts[0].length === 24 && parts[1].length === 32) {
-    try {
-      return decrypt(text);
-    } catch {
-      return text;
+  if (parts.length === 3) {
+    const hexRegex = /^[0-9a-fA-F]+$/;
+    if (hexRegex.test(parts[0]) && hexRegex.test(parts[1])) {
+      try {
+        const dec = decrypt(text);
+        if (dec !== text) {
+          return dec;
+        }
+      } catch {
+        return text;
+      }
     }
   }
   return text;
