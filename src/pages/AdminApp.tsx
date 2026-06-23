@@ -5770,6 +5770,8 @@ function ProductsAdmin({
 
   // Form State
   const [name, setName] = useState("");
+  const [prodPricingMode, setProdPricingMode] = useState<"retail" | "wholesale">("retail");
+  const [prodWholesaleTiers, setProdWholesaleTiers] = useState<{ minQty: number; price: number }[]>([]);
   const [niche, setNiche] = useState("");
   const [category, setCategory] = useState("");
   const [price, setPrice] = useState("");
@@ -6193,6 +6195,13 @@ function ProductsAdmin({
       setArrangeTier(prod.arrangeTier || "all");
       setVibe(prod.vibe || "all");
       setPresentationStyle(prod.presentationStyle || "all");
+      if (prod.wholesaleTiers && prod.wholesaleTiers.length > 0) {
+        setProdPricingMode("wholesale");
+        setProdWholesaleTiers(prod.wholesaleTiers);
+      } else {
+        setProdPricingMode("retail");
+        setProdWholesaleTiers([]);
+      }
       setJustGeneratedSku("");
     } else {
       setEditId(null);
@@ -6213,6 +6222,8 @@ function ProductsAdmin({
       setArrangeTier("all");
       setVibe("all");
       setPresentationStyle("all");
+      setProdPricingMode("retail");
+      setProdWholesaleTiers([]);
       setJustGeneratedSku("");
     }
     setShowModal(true);
@@ -6630,6 +6641,22 @@ function ProductsAdmin({
   const saveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    let finalWholesaleTiers =
+      prodPricingMode === "wholesale"
+        ? prodWholesaleTiers.filter((t) => t.minQty > 0 && t.price > 0)
+        : [];
+
+    if (
+      prodPricingMode === "wholesale" &&
+      finalWholesaleTiers.length > 0 &&
+      price
+    ) {
+      const sorted = [...finalWholesaleTiers].sort(
+        (a, b) => a.minQty - b.minQty,
+      );
+      finalWholesaleTiers = sorted;
+    }
+
     const stockNum = Number(stock);
     const newProd: Product = {
       id: editId || "PRD-" + Date.now(),
@@ -6653,6 +6680,7 @@ function ProductsAdmin({
       arrangeTier,
       vibe,
       presentationStyle,
+      wholesaleTiers: finalWholesaleTiers,
       sellerId: editId
         ? products.find((p) => p.id === editId)?.sellerId
         : currentSeller
@@ -7753,6 +7781,170 @@ function ProductsAdmin({
                   {oldPrice && Number(oldPrice) > 0 && (
                     <div className="text-xs text-slate-500 mt-1.5 font-bold">
                       = {formatCurrency(Number(oldPrice))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Pricing Mode Selection Box */}
+                <div className="bg-slate-50 border border-slate-200/80 p-5 rounded-2xl space-y-4 col-span-1 sm:col-span-2">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                      <span className="block text-[11px] font-black uppercase text-slate-400 tracking-wider">
+                        {lang === "sw" ? "Aina ya Bei" : "Pricing Model / Type"}
+                      </span>
+                      <p className="text-[10px] text-slate-505 font-medium mt-0.5">
+                        {lang === "sw"
+                          ? "Chagua uuzaji wa Reja-reja au wa Jumla (Wholesale)"
+                          : "Select regular retail or wholesale with discount tiers"}
+                      </p>
+                    </div>
+                    <select
+                      value={prodPricingMode}
+                      onChange={(e) => {
+                        const mode = e.target.value as "retail" | "wholesale";
+                        setProdPricingMode(mode);
+                        if (
+                          mode === "wholesale" &&
+                          prodWholesaleTiers.length === 0
+                        ) {
+                          setProdWholesaleTiers([
+                            { minQty: 1, price: parseFloat(price) || 0 },
+                          ]);
+                        }
+                      }}
+                      className="bg-white border border-slate-200/80 px-4 py-2 rounded-xl text-xs font-bold shrink-0 outline-none focus:border-indigo-600 transition text-slate-800"
+                    >
+                      <option value="retail">
+                        {lang === "sw"
+                          ? "Retail (Bei Kawaida)"
+                          : "Retail (Single price)"}
+                      </option>
+                      <option value="wholesale">
+                        {lang === "sw"
+                          ? "Whole Sale (Bei za Jumla)"
+                          : "Whole Sale (Tiered pricing)"}
+                      </option>
+                    </select>
+                  </div>
+
+                  {prodPricingMode === "wholesale" && (
+                    <div className="space-y-3.5 pt-3 border-t border-slate-200/80">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                          {lang === "sw"
+                            ? "Vigezo vya Bei za Jumla (Wholesale Prices per Quantity)"
+                            : "Wholesale Pricing Tiers"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const lastQty =
+                              prodWholesaleTiers.length > 0
+                                ? prodWholesaleTiers[
+                                    prodWholesaleTiers.length - 1
+                                  ].minQty
+                                : 1;
+                            const lastPrice =
+                              prodWholesaleTiers.length > 0
+                                ? prodWholesaleTiers[
+                                    prodWholesaleTiers.length - 1
+                                  ].price
+                                : parseFloat(price) || 0;
+                            setProdWholesaleTiers([
+                              ...prodWholesaleTiers,
+                              {
+                                minQty: lastQty + 5,
+                                price: Math.max(0, Math.round(lastPrice * 0.9)),
+                              },
+                            ]);
+                          }}
+                          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-[10px] uppercase tracking-wider transition cursor-pointer"
+                        >
+                          {lang === "sw"
+                            ? "+ Ongeza Vigezo"
+                            : "+ Add Quantity Tier"}
+                        </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        {prodWholesaleTiers.map((tier, idx) => (
+                          <div
+                            key={`wholesale-tier-${idx}`}
+                            className="flex items-center gap-3 bg-white p-3 border border-slate-200/60 rounded-xl"
+                          >
+                            <div className="flex-1 grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">
+                                  {lang === "sw"
+                                    ? "Kuanzia Idadi (Min Qty)"
+                                    : "Min Quantity"}
+                                </span>
+                                <input
+                                  required
+                                  type="number"
+                                  min="1"
+                                  value={tier.minQty}
+                                  onChange={(e) => {
+                                    const updated = [...prodWholesaleTiers];
+                                    updated[idx].minQty =
+                                      parseInt(e.target.value) || 1;
+                                    setProdWholesaleTiers(updated);
+                                  }}
+                                  className="w-full bg-slate-50 border border-slate-200/80 px-3 py-2 rounded-lg text-xs font-bold outline-none text-slate-700"
+                                  placeholder="e.g. 5"
+                                />
+                              </div>
+
+                              <div className="space-y-1">
+                                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">
+                                  {lang === "sw"
+                                    ? "Bei ya kila kimoja (Price per Qty)"
+                                    : "Price per Unit (TZS)"}
+                                </span>
+                                <input
+                                  required
+                                  type="number"
+                                  min="0"
+                                  value={tier.price}
+                                  onChange={(e) => {
+                                    const updated = [...prodWholesaleTiers];
+                                    updated[idx].price =
+                                      parseFloat(e.target.value) || 0;
+                                    setProdWholesaleTiers(updated);
+                                  }}
+                                  className="w-full bg-slate-50 border border-slate-200/80 px-3 py-2 rounded-lg text-xs font-bold outline-none text-emerald-600"
+                                  placeholder="e.g. 120000"
+                                />
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setProdWholesaleTiers(
+                                  prodWholesaleTiers.filter(
+                                    (_, i) => i !== idx,
+                                  ),
+                                );
+                              }}
+                              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition shrink-0 cursor-pointer"
+                              title={
+                                lang === "sw" ? "Futa vigezo" : "Delete tier"
+                              }
+                            >
+                              <Trash size={16} />
+                            </button>
+                          </div>
+                        ))}
+
+                        {prodWholesaleTiers.length === 0 && (
+                          <p className="text-[10px] text-slate-400 text-center py-2 italic font-semibold">
+                            {lang === "sw"
+                              ? "Bofya kitufe cha juu kuongeza vigezo vya mauzo ya jumla k.m. 'Nunua kuanzia 5 kila kimoja TZS 120,000'"
+                              : "Click add button to start configuring your wholesale price metrics."}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

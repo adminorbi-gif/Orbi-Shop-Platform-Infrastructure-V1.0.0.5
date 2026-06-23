@@ -5713,15 +5713,65 @@ Zawadi ya Alama za Uaminifu zilizoongezwa kwenye kibeti chako: +${earned} Points
           <ProductDetailPage
             product={selectedProduct}
             seller={sellers.find((s) => s.id === selectedProduct.sellerId)}
-            relatedProducts={products.filter((p) => {
-              if (p.id === selectedProduct.id) return false;
-              const hasNiche =
-                selectedProduct.niche && selectedProduct.niche !== "Zote";
-              if (hasNiche && p.niche === selectedProduct.niche) return true;
-              if (!hasNiche && p.category === selectedProduct.category)
+            relatedProducts={(() => {
+              // 1. Must match the same category to avoid unrelated categories in the same broad niche
+              const sameCategoryProducts = products.filter((p) => {
+                if (p.id === selectedProduct.id) return false;
+                
+                // Match the exact category
+                if (selectedProduct.category && p.category !== selectedProduct.category) {
+                  return false;
+                }
+                
+                // Match the niche (or fallback to broad matching if niche isn't specified)
+                const sNiche = selectedProduct.niche && selectedProduct.niche !== "Zote";
+                if (sNiche && p.niche !== selectedProduct.niche) {
+                  return false;
+                }
+                
                 return true;
-              return false;
-            })}
+              });
+
+              // If there are no products of the exact same category, fallback to niche-based products
+              const basePool = sameCategoryProducts.length > 0 
+                ? sameCategoryProducts 
+                : products.filter((p) => {
+                    if (p.id === selectedProduct.id) return false;
+                    const sNiche = selectedProduct.niche && selectedProduct.niche !== "Zote";
+                    return sNiche && p.niche === selectedProduct.niche;
+                  });
+
+              // 2. Score by "Family" similarity to sort closer items first
+              const scored = basePool.map((p) => {
+                let score = 0;
+                
+                // A) Brand / Prefix matching (e.g., both "Sony ..." or "Samsung ...")
+                const firstWord1 = selectedProduct.name.trim().split(/\s+/)[0]?.toLowerCase();
+                const firstWord2 = p.name.trim().split(/\s+/)[0]?.toLowerCase();
+                if (firstWord1 && firstWord1 === firstWord2) {
+                  score += 30;
+                }
+
+                // B) Title/name keyword overlap (e.g. matching "4K", "Smart", "OLED", "TV")
+                const words1 = selectedProduct.name.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+                const words2 = p.name.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+                const commonWords = words1.filter(w => words2.includes(w));
+                score += commonWords.length * 10;
+
+                // C) Tag overlap similarity
+                const p1Tags = selectedProduct.tags || [];
+                const p2Tags = p.tags || [];
+                const commonTags = p1Tags.filter(t => p2Tags.includes(t));
+                score += commonTags.length * 5;
+
+                return { product: p, score };
+              });
+
+              // Sort by highest similarity score first
+              return scored
+                .sort((a, b) => b.score - a.score)
+                .map(item => item.product);
+            })()}
             onSelectProduct={(p) => {
               setSelectedProduct(p);
               const params = new URLSearchParams(window.location.search);
@@ -9089,16 +9139,13 @@ function AuthModal({
           }
         }
       } else if (localMode === "reset") {
-        const reqLength = password.length >= 6;
-        const reqUpper = /[A-Z]/.test(password);
-        const reqLower = /[a-z]/.test(password);
-        const reqDigit = /[0-9]/.test(password);
+        const reqLength = password.length >= 4;
 
-        if (!reqLength || !reqUpper || !reqLower || !reqDigit) {
+        if (!reqLength) {
           showAlert(
             lang === "sw"
-              ? "Nenosiri lako jipya lazima litimize vigezo vyote vinne vya ulinzi!"
-              : "Your new password must meet all four security requirements!",
+              ? "Nenosiri lako lazima liwe na herufi angalau 4!"
+              : "Your password must be at least 4 characters long!",
             "error",
           );
           setLoading(false);
@@ -9155,16 +9202,13 @@ function AuthModal({
           setLocalMode("login");
         }
       } else if (localMode === "register") {
-        const reqLength = password.length >= 6;
-        const reqUpper = /[A-Z]/.test(password);
-        const reqLower = /[a-z]/.test(password);
-        const reqDigit = /[0-9]/.test(password);
+        const reqLength = password.length >= 4;
 
-        if (!reqLength || !reqUpper || !reqLower || !reqDigit) {
+        if (!reqLength) {
           showAlert(
             lang === "sw"
-              ? "Nenosiri lako lazima litimize vigezo vyote vinne vya ulinzi!"
-              : "Your password must meet all four security requirements!",
+              ? "Nenosiri lako lazima liwe na herufi angalau 4!"
+              : "Your password must be at least 4 characters long!",
             "error",
           );
           setLoading(false);
@@ -9528,84 +9572,30 @@ function AuthModal({
                   </button>
                 </div>
 
-                {/* 4 Minimal Password Requirements Real-Time Checker */}
+                {/* Simplified Password Requirements */}
                 <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/60 space-y-2 text-left">
                   <p className="font-bold text-slate-600 text-[10px] uppercase tracking-wider">
                     {lang === "sw"
-                      ? "Vigezo vya Nenosiri (Vyote Vinahitajika):"
-                      : "Password Requirements (All Required):"}
+                      ? "Kigezo cha Nenosiri:"
+                      : "Password Requirement:"}
                   </p>
-                  <div className="grid grid-cols-2 gap-2 text-[11px]">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${password.length >= 6 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}
-                      >
-                        {password.length >= 6 ? "✓" : "×"}
-                      </span>
-                      <span
-                        className={
-                          password.length >= 6
-                            ? "text-emerald-700 font-semibold"
-                            : "text-slate-500"
-                        }
-                      >
-                        {lang === "sw"
-                          ? "Herufi 6 au zaidi"
-                          : "At least 6 chars"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${/[A-Z]/.test(password) ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}
-                      >
-                        {/[A-Z]/.test(password) ? "✓" : "×"}
-                      </span>
-                      <span
-                        className={
-                          /[A-Z]/.test(password)
-                            ? "text-emerald-700 font-semibold"
-                            : "text-slate-500"
-                        }
-                      >
-                        {lang === "sw"
-                          ? "Herufi Kubwa (A-Z)"
-                          : "Uppercase (A-Z)"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${/[a-z]/.test(password) ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}
-                      >
-                        {/[a-z]/.test(password) ? "✓" : "×"}
-                      </span>
-                      <span
-                        className={
-                          /[a-z]/.test(password)
-                            ? "text-emerald-700 font-semibold"
-                            : "text-slate-500"
-                        }
-                      >
-                        {lang === "sw"
-                          ? "Herufi Ndogo (a-z)"
-                          : "Lowercase (a-z)"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${/[0-9]/.test(password) ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}
-                      >
-                        {/[0-9]/.test(password) ? "✓" : "×"}
-                      </span>
-                      <span
-                        className={
-                          /[0-9]/.test(password)
-                            ? "text-emerald-700 font-semibold"
-                            : "text-slate-500"
-                        }
-                      >
-                        {lang === "sw" ? "Namba (0-9)" : "One digit (0-9)"}
-                      </span>
-                    </div>
+                  <div className="flex items-center gap-1.5 text-[11px]">
+                    <span
+                      className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${password.length >= 4 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}
+                    >
+                      {password.length >= 4 ? "✓" : "×"}
+                    </span>
+                    <span
+                      className={
+                        password.length >= 4
+                          ? "text-emerald-700 font-semibold"
+                          : "text-slate-500"
+                      }
+                    >
+                      {lang === "sw"
+                        ? "Herufi 4 au zaidi"
+                        : "At least 4 characters"}
+                    </span>
                   </div>
                 </div>
 

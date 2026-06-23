@@ -23,6 +23,9 @@ router.get("/", async (req, res) => {
       const skuTag = tagsList.find((t: string) => typeof t === 'string' && t.startsWith('sku:'));
       const parsedSku = skuTag ? skuTag.substring(4) : undefined;
 
+      const warrantyTag = tagsList.find((t: string) => typeof t === 'string' && t.startsWith('warranty:'));
+      const parsedWarranty = p.warranty || (warrantyTag ? warrantyTag.substring(9) : undefined);
+
       return {
         id: p.id,
         name: p.name || 'Unnamed',
@@ -38,6 +41,7 @@ router.get("/", async (req, res) => {
         createdAt: new Date(p.created_at || Date.now()).getTime(),
         sellerId: parsedSellerId,
         sku: parsedSku,
+        warranty: parsedWarranty,
         features: Array.isArray(p.features) ? p.features : [],
         wholesaleTiers: Array.isArray(p.wholesale_tiers) ? p.wholesale_tiers : []
       };
@@ -64,6 +68,10 @@ router.post("/", async (req, res) => {
       if (product.sku) {
         finalTags = finalTags.filter((t: string) => !t.startsWith('sku:'));
         finalTags.push(`sku:${product.sku}`);
+      }
+      if (product.warranty) {
+        finalTags = finalTags.filter((t: string) => !t.startsWith('warranty:'));
+        finalTags.push(`warranty:${product.warranty}`);
       }
 
       const payload: any = {

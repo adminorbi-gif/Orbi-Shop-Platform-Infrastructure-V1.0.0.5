@@ -31,6 +31,12 @@ const apiFetch = async (url: string, options: RequestInit = {}) => {
       } catch (e) {}
       throw new Error(errorMessage);
     }
+    
+    const contentType = res.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      throw new Error(`Expected JSON response, but received: ${contentType.substring(0, 50)}`);
+    }
+
     const json = await res.json();
     if (json && json.success === false) {
       throw new Error(json.error || 'API execution returned failed status');
@@ -424,8 +430,13 @@ export const db = {
 
   // Autopilot configurations details
   getAiPilotSettings: async (): Promise<{autoApprove: boolean, autoCategorize: boolean, autoMessage: boolean, smartPromotion: boolean, securityMonitor: boolean}> => {
-    const res = await apiFetch('/api/v1/settings/ai-pilot');
-    return res.data || { autoApprove: true, autoCategorize: true, autoMessage: true, smartPromotion: true, securityMonitor: true };
+    try {
+      const res = await apiFetch('/api/v1/settings/ai-pilot');
+      return res.data || { autoApprove: true, autoCategorize: true, autoMessage: true, smartPromotion: true, securityMonitor: true };
+    } catch (err) {
+      console.warn("[db] Failed to fetch ai-pilot settings, returning safe default offline fallback:", err);
+      return { autoApprove: true, autoCategorize: true, autoMessage: true, smartPromotion: true, securityMonitor: true };
+    }
   },
   saveAiPilotSettings: async (settings: any) => {
     await apiFetch('/api/v1/settings/ai-pilot', {

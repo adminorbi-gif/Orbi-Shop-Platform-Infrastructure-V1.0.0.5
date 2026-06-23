@@ -85,14 +85,29 @@ export class AIPilotEngine {
         console.log("[AI Pilot] Inakagua oda zilizochelewa (Peding > 24h)...");
         try {
           const { db } = await import("../lib/db");
-          const settings = await db.getAiPilotSettings();
+          
+          let settings;
+          try {
+            settings = await db.getAiPilotSettings();
+          } catch (e: any) {
+            console.warn("[AI Pilot] Imeshindwa kupata settings za AI Pilot kutoka database (ikitumia default settings ya simu):", e.message || e);
+            settings = { autoMessage: true };
+          }
+
           // We can check if autoMessage is enabled or a specific reminder toggle is enabled
           if (settings.autoMessage === false) {
              console.log("[AI Pilot] Pending Order Notification is disabled via AI Pilot settings.");
              return;
           }
 
-          const orders = await db.getOrders();
+          let orders = [];
+          try {
+            orders = await db.getOrders();
+          } catch (e: any) {
+            console.warn("[AI Pilot] Mtandao au database haiko tayari kwa sasa. Inasitisha kagua wa oda:", e.message || e);
+            return; // Exit gracefully and safely
+          }
+
           const now = Date.now();
           const twentyFourHours = 24 * 60 * 60 * 1000;
           
@@ -113,15 +128,19 @@ export class AIPilotEngine {
                 console.log(`[AI Pilot] Inatuma SMS/Email kwa mteja: ${custName} kuhusu oda: ${orderNum}`);
                 
                 // Keep record in logs / messages to show user we simulated an SMS/Email task execution
-                await db.saveMessage({
-                  id: "MSG_SYS_" + Date.now() + Math.random().toString(36).substr(2, 5),
-                  name: "AI PILOT SYSTEM",
-                  phone: "AI-PILOT",
-                  message: `Kikumbusho: Oda #${orderNum} bado haijalipiwa. Ndugu ${custName}, tunakukumbusha kuhusu oda yako yenye bidhaa ${order.items?.length || 0} ambayo bado inasubiri malipo ya Orbi PaySafe escrow.`,
-                  date: Date.now(),
-                  isRead: false,
-                  customerId: order.customerId
-                });
+                try {
+                  await db.saveMessage({
+                    id: "MSG_SYS_" + Date.now() + Math.random().toString(36).substr(2, 5),
+                    name: "AI PILOT SYSTEM",
+                    phone: "AI-PILOT",
+                    message: `Kikumbusho: Oda #${orderNum} bado haijalipiwa. Ndugu ${custName}, tunakukumbusha kuhusu oda yako yenye bidhaa ${order.items?.length || 0} ambayo bado inasubiri malipo ya Orbi PaySafe escrow.`,
+                    date: Date.now(),
+                    isRead: false,
+                    customerId: order.customerId
+                  });
+                } catch (msgErr: any) {
+                  console.warn(`[AI Pilot] Imeshindwa kuhifadhi taarifa ya kikumbusho cha oda #${orderNum} kwenye DB:`, msgErr.message || msgErr);
+                }
 
                 notifiedOrders.push(order.id);
                 notifiedCount++;
@@ -133,8 +152,8 @@ export class AIPilotEngine {
             localStorage.setItem('orbi_notified_orders', JSON.stringify(notifiedOrders));
           }
           console.log(`[AI Pilot] Imetuma vikumbusho ${notifiedCount} kwa wateja.`);
-        } catch (error) {
-          console.error("[AI Pilot] Kosa katika kikumbusho cha oda:", error);
+        } catch (error: any) {
+          console.warn("[AI Pilot] Taarifa: Kikumbusho cha oda hakijakamilishwa kikamilifu:", error.message || error);
         }
       }
     });
