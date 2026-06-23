@@ -32,54 +32,111 @@
         if (canonical) canonical.setAttribute('href', base + window.location.pathname + window.location.search);
         var ogUrl = document.querySelector('meta[property="og:url"]');
         if (ogUrl) ogUrl.setAttribute('content', base + window.location.pathname + window.location.search);
+        
+        // Prevent indexing of strictly private admin pages
+        var searchParams = new URLSearchParams(window.location.search);
+        var isSensitive = searchParams.has('admin') ||
+                          window.location.pathname.startsWith('/i');
+        if (isSensitive) {
+          var robots = document.createElement('meta');
+          robots.name = 'robots';
+          robots.content = 'noindex, nofollow';
+          document.head.appendChild(robots);
+        }
 
         var schemaEl = document.getElementById('dynamic-seo-schema');
         if (schemaEl) {
           schemaEl.type = 'application/ld+json';
-          var schemaData = {
-            "@context": "https://schema.org",
-            "@type": "ItemList",
-            "name": "Orbi Shop Marketplace Navigation",
-            "description": "Deep link crawl map for Orbi Shop Marketplace items, helping index pages directly on Google and external search providers.",
-            "itemListElement": [
-              {
-                "@type": "ListItem",
-                "position": 1,
-                "name": "Orbi Shop Home Marketplace - Buyer Shop",
-                "url": base + "/"
-              },
-              {
-                "@type": "ListItem",
-                "position": 2,
-                "name": "About Us & Secure Escrow Information",
-                "url": base + "/?about=true"
-              },
-              {
-                "@type": "ListItem",
-                "position": 3,
-                "name": "Staff and Merchant Registration",
-                "url": base + "/?seller-signup=true"
-              },
-              {
-                "@type": "ListItem",
-                "position": 4,
-                "name": "Seller & Administrator System Login",
-                "url": base + "/?seller-login=true"
-              },
-              {
-                "@type": "ListItem",
-                "position": 5,
-                "name": "Seller Product Portal Manager",
-                "url": base + "/?seller-productportal=true"
-              },
-              {
-                "@type": "ListItem",
-                "position": 6,
-                "name": "My Tracking Status Dashboard",
-                "url": base + "/?track=true"
+          
+          // Check if we are viewing a specific product
+          var productId = searchParams.get('productId') || searchParams.get('product');
+          var productName = searchParams.get('name') || "Orbi Shop Product";
+          var productNameSw = searchParams.get('nameSw');
+          var productPrice = searchParams.get('price');
+          
+          var schemaData;
+          
+          if (productId) {
+            // Update Meta Description dynamically for search results
+            var metaDesc = document.querySelector('meta[name="description"]');
+            var priceDisplay = productPrice ? productPrice + " TZS" : "bei nzuri";
+            var baseName = productNameSw || productName;
+            var swDesc = "Bei ya " + baseName + " ni " + priceDisplay + ". Nunua sasa kwenye Orbi Shop Tanzania.";
+            if (metaDesc) metaDesc.setAttribute('content', swDesc);
+
+            // Update OG and Twitter descriptions
+            var ogDesc = document.querySelector('meta[property="og:description"]');
+            if (ogDesc) ogDesc.setAttribute('content', swDesc);
+            var twDesc = document.querySelector('meta[name="twitter:description"]');
+            if (twDesc) twDesc.setAttribute('content', swDesc);
+
+            // Update Page Title
+            document.title = "Bei ya " + baseName + " | Orbi Shop";
+
+            // Specific Product Schema for better indexing of product details
+            schemaData = {
+              "@context": "https://schema.org",
+              "@type": "Product",
+              "id": base + "/?productId=" + productId,
+              "name": productName,
+              "alternateName": productNameSw || undefined,
+              "description": swDesc + " Buy " + productName + " at the best price on Africa's Trusted Marketplace.",
+              "sku": productId,
+              "offers": {
+                "@type": "Offer",
+                "price": productPrice || "0.00",
+                "priceCurrency": "TZS",
+                "availability": "https://schema.org/InStock",
+                "url": base + "/?productId=" + productId
               }
-            ]
-          };
+            };
+          } else {
+            // General Marketplace Schema
+            schemaData = {
+              "@context": "https://schema.org",
+              "@type": "ItemList",
+              "name": "Orbi Shop Marketplace Navigation",
+              "description": "Deep link crawl map for Orbi Shop Marketplace items, helping index pages directly on Google and external search providers.",
+              "itemListElement": [
+                {
+                  "@type": "ListItem",
+                  "position": 1,
+                  "name": "Orbi Shop Home Marketplace - Buyer Shop",
+                  "url": base + "/"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 2,
+                  "name": "About Us & Secure Escrow Information",
+                  "url": base + "/?about=true"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 3,
+                  "name": "Staff and Merchant Registration",
+                  "url": base + "/?seller-signup=true"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 4,
+                  "name": "Seller & Merchant Dashboard Login",
+                  "url": base + "/?seller-login=true"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 5,
+                  "name": "Seller Product Portal Manager",
+                  "url": base + "/?seller-productportal=true"
+                },
+                {
+                  "@type": "ListItem",
+                  "position": 6,
+                  "name": "Order Tracking & Delivery Status",
+                  "url": base + "/?track=true"
+                }
+              ]
+            };
+          }
           schemaEl.textContent = JSON.stringify(schemaData, null, 2);
         }
       })();

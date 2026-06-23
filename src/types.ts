@@ -89,6 +89,7 @@ export interface WholesaleTier {
 export interface Product {
   id: string;
   name: string;
+  nameSw?: string;
   niche: string;
   category: string;
   price: number;

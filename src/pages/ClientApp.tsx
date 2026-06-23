@@ -826,6 +826,49 @@ export default function ClientApp() {
   } | null>(null);
   const [allReviews, setAllReviews] = useState<Record<string, any[]>>({});
 
+  // Dynamic SEO Metadata Management
+  useEffect(() => {
+    const updateMetadata = () => {
+      if (selectedProduct) {
+        const priceValue = formatCurrency(selectedProduct.price);
+        const priceText = lang === "sw" ? `TSh ${priceValue}` : `${priceValue} TZS`;
+        const displayName = selectedProduct.nameSw || selectedProduct.name;
+        
+        // Swahili-first Title for local search optimization
+        document.title = `Bei ya ${displayName} - ${priceText} | Orbi Shop`;
+        
+        const metaDesc = document.querySelector('meta[name="description"]');
+        if (metaDesc) {
+          metaDesc.setAttribute('content', `Nunua ${displayName} kwa bei ya ${priceText}. ${selectedProduct.description.substring(0, 150)}... Wauzaji walioidhinishwa Orbi Shop Tanzania.`);
+        }
+        
+        // Update URL search params silently for fallback script
+        const url = new URL(window.location.href);
+        const oldName = url.searchParams.get('name');
+        const oldPrice = url.searchParams.get('price');
+        
+        if (oldName !== selectedProduct.name || oldPrice !== selectedProduct.price.toString()) {
+          url.searchParams.set('name', selectedProduct.name);
+          if (selectedProduct.nameSw) {
+            url.searchParams.set('nameSw', selectedProduct.nameSw);
+          }
+          url.searchParams.set('price', selectedProduct.price.toString());
+          window.history.replaceState({}, '', url.toString());
+        }
+      } else {
+        document.title = lang === "sw" ? "Orbi Shop - Soko Linaloaminika Tanzania" : "Orbi Shop - Trusted E-Commerce Marketplace Tanzania";
+        const metaDesc = document.querySelector('meta[name="description"]');
+        if (metaDesc) {
+          metaDesc.setAttribute('content', lang === "sw" 
+            ? "Nunua na Orbi - Soko linaloaminika zaidi la E-commerce nchini Tanzania na Afrika. Ubora na usalama wa malipo uliothibitishwa."
+            : "Shop with Orbi - The Most Trusted E-Commerce Marketplace in Tanzania and Africa. quality, authenticity, and guaranteed payment protection.");
+        }
+      }
+    };
+
+    updateMetadata();
+  }, [selectedProduct, lang]);
+
   useEffect(() => {
     try {
       localStorage.setItem("orbishop_lang", lang);
@@ -3364,6 +3407,21 @@ Zawadi ya Alama za Uaminifu zilizoongezwa kwenye kibeti chako: +${earned} Points
           />
         </div>
       )}
+
+      {/* Dynamic SEO Product Discovery Map - Hidden from UI but accessible to search engine crawlers */}
+      <div className="sr-only opacity-0 pointer-events-none absolute -bottom-full" aria-hidden="true">
+        <h3>Product Sitemap Discovery - Bei za Bidhaa Tanzania</h3>
+        {products.slice(0, 150).map(p => {
+          const swName = p.nameSw || p.name;
+          const swUrl = `/?product=${p.id}&name=${encodeURIComponent(p.name)}&price=${p.price}${p.nameSw ? `&nameSw=${encodeURIComponent(p.nameSw)}` : ''}`;
+          return (
+            <a key={`seo-link-${p.id}`} href={swUrl} title={`Bei ya ${swName}`}>
+              Nunua {swName} - Bei ya {p.price} TZS - Orbi Shop Tanzania
+            </a>
+          );
+        })}
+      </div>
+
       <div
         className={`min-h-screen flex flex-col font-sans bg-slate-50 ${viewInvoice ? "print:hidden" : ""}`}
       >
@@ -15194,7 +15252,7 @@ function CustomerProfile({
                     setSelectedConfirmOrder(null);
                     showAlert(
                       lang === "sw"
-                        ? "Asante rasi! Mapokezi ya oda yako yamethibitishwa vyema. Muuzaji anaombwa kuidhinisha malipo sasa."
+                        ? "Asante rasi! Mapokezi ya oda yako yamethibitishwa vyema. Muuzaji amejulishwaa kuidhinisha malipo sasa."
                         : "Thank you! Your delivery confirmation is recorded. The seller has been notified to approve funds release.",
                       "success",
                     );

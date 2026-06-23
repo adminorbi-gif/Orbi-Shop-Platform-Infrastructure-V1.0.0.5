@@ -134,6 +134,46 @@ async function startServer() {
     res.json({ status: "ok", message: "Orbi System Dedicated Server is running horizontally scaled." });
   });
 
+  // Dynamic Sitemap Generator for Search Engines
+  app.get("/sitemap.xml", async (req, res) => {
+    try {
+      // Fetch visible products for the sitemap
+      const { data: products } = await supabase
+        .from('products')
+        .select('id, name, updated_at')
+        .limit(1000);
+
+      const baseUrl = 'https://orbishop.co.tz';
+      let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${baseUrl}/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>`;
+
+      if (products) {
+        products.forEach((p: any) => {
+          const lastMod = p.updated_at ? new Date(p.updated_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+          xml += `
+  <url>
+    <loc>${baseUrl}/?productId=${p.id}</loc>
+    <lastmod>${lastMod}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+        });
+      }
+
+      xml += `\n</urlset>`;
+      res.header('Content-Type', 'application/xml');
+      res.status(200).send(xml);
+    } catch (err: any) {
+      console.error("Sitemap generation error:", err.message);
+      res.status(500).send("Error generating sitemap");
+    }
+  });
+
   app.get("/health", (req, res) => {
     res.json({ status: "ok", message: "Orbi System Dedicated Server is running horizontally scaled." });
   });
