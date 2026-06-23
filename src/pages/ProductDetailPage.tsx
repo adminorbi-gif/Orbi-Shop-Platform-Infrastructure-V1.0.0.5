@@ -920,7 +920,11 @@ export default function ProductDetailPage({
             {/* Sharing Block */}
             <div className="flex flex-col sm:flex-row gap-2 mb-8">
               <a
-                href={`https://wa.me/?text=${encodeURIComponent(`${product.name}\n${window.location.origin}/?product=${product.id}`)}`}
+                href={`https://wa.me/?text=${encodeURIComponent(
+                  lang === "sw" 
+                    ? `Tazama ${product.nameSw || product.name} kwa ${formatCurrency(product.price)} kwenye Orbi Shop!\n\n${window.location.origin}/?product=${product.id}`
+                    : `Check out ${product.name} for ${formatCurrency(product.price)} on Orbi Shop!\n\n${window.location.origin}/?product=${product.id}`
+                )}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-1 h-11 bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-xs transition-all hover:scale-[1.02] active:scale-95 text-sm cursor-pointer"

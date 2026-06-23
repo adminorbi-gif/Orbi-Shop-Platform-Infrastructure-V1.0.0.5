@@ -2209,10 +2209,9 @@ Format: ["keyword1", "keyword2", ...]`;
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-
+    
     let indexTemplate: string | null = null;
-    app.get('*all', async (req, res) => {
+    const serveIndex = async (req, res) => {
       const indexPath = path.join(distPath, 'index.html');
       try {
         if (!indexTemplate || process.env.NODE_ENV !== "production") {
@@ -2231,8 +2230,9 @@ Format: ["keyword1", "keyword2", ...]`;
             const { data: product } = await supabase.from('products').select('*').eq('id', productId).single();
             if (product) {
               const name = product.nameSw || product.name;
-              const price = product.price ? `${Number(product.price).toLocaleString()} TZS` : "bei nzuri";
-              const desc = `Bei ya ${name} ni ${price}. Nunua sasa kwenye Orbi Shop Tanzania. Bidhaa bora, malipo salama na usafirishaji wa haraka.`;
+              const priceNum = Number(product.price);
+              const priceFormatted = !isNaN(priceNum) ? `${priceNum.toLocaleString()} TZS` : "bei nzuri";
+              const desc = `Bei ya ${name} ni ${priceFormatted}. Nunua sasa kwenye Orbi Shop Tanzania. Bidhaa bora, malipo salama na usafirishaji wa haraka.`;
               const image = (product.images && product.images.length > 0) ? product.images[0] : "https://limcgmcytzvotxhthqiu.supabase.co/storage/v1/object/public/PLATFROM%20STOCKS/Platform%20Logos/OrbiShop_Logo_Blue.png";
               const title = `Bei ya ${name} | Orbi Shop Tanzania`;
               
@@ -2256,12 +2256,20 @@ Format: ["keyword1", "keyword2", ...]`;
           }
         }
         
+        res.setHeader('Content-Type', 'text/html');
         res.send(html);
       } catch (err) {
         console.error("HTML serve error:", err);
         res.status(500).send("Internal Server Error");
       }
-    });
+    };
+
+    // Serve static files but EXCLUDE index.html from direct serving
+    app.use(express.static(distPath, { index: false }));
+
+    // Routes that should return the index.html (SPA entry point)
+    app.get('/', serveIndex);
+    app.get('*all', serveIndex);
   }
 
   app.listen(PORT, "0.0.0.0", () => {
