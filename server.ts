@@ -2235,6 +2235,34 @@ Format: ["keyword1", "keyword2", ...]`;
               const desc = `Bei ya ${name} ni ${priceFormatted}. Nunua sasa kwenye Orbi Shop Tanzania. Bidhaa bora, malipo salama na usafirishaji wa haraka.`;
               const image = (product.images && product.images.length > 0) ? product.images[0] : "https://limcgmcytzvotxhthqiu.supabase.co/storage/v1/object/public/PLATFROM%20STOCKS/Platform%20Logos/OrbiShop_Logo_Blue.png";
               const title = `Bei ya ${name} | Orbi Shop Tanzania`;
+              const fullUrl = `https://shop.orbifinancial.com/?product=${productId}`;
+              
+              // Specific Product JSON-LD for rich snippets (Price, Stock, Brand)
+              const productJsonLd = {
+                "@context": "https://schema.org/",
+                "@type": "Product",
+                "name": name,
+                "image": product.images || [image],
+                "description": product.description || desc,
+                "sku": product.id,
+                "mpn": product.id,
+                "brand": {
+                  "@type": "Brand",
+                  "name": "Orbi Shop"
+                },
+                "offers": {
+                  "@type": "Offer",
+                  "url": fullUrl,
+                  "priceCurrency": "TZS",
+                  "price": priceNum,
+                  "itemCondition": "https://schema.org/NewCondition",
+                  "availability": (product.stock && product.stock > 0) ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+                  "seller": {
+                    "@type": "Organization",
+                    "name": "Orbi Shop Tanzania"
+                  }
+                }
+              };
               
               // Dynamic replacement of meta tags for social media previews
               html = html.replace(/<title>.*?<\/title>/, `<title>${title}</title>`);
@@ -2247,13 +2275,32 @@ Format: ["keyword1", "keyword2", ...]`;
               html = html.replace(/<meta name="twitter:image" content=".*?" \/>/g, `<meta name="twitter:image" content="${image}" />`);
               
               // Also update canonical and og:url if possible
-              const fullUrl = `https://shop.orbifinancial.com/?product=${productId}`;
               html = html.replace(/<link rel="canonical" href=".*?" \/>/, `<link rel="canonical" href="${fullUrl}" />`);
               html = html.replace(/<meta property="og:url" content=".*?" \/>/, `<meta property="og:url" content="${fullUrl}" />`);
+
+              // Inject the Product JSON-LD schema
+              html = html.replace('<script id="dynamic-seo-schema"></script>', `<script id="dynamic-seo-schema" type="application/ld+json">${JSON.stringify(productJsonLd)}</script>`);
             }
           } catch (dbErr) {
             console.error("Dynamic SEO DB fetch error:", dbErr);
           }
+        } else {
+          // Home page schema
+          const homeSchema = {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "Orbi Shop",
+            "url": "https://shop.orbifinancial.com/",
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://shop.orbifinancial.com/?q={search_term_string}"
+              },
+              "query-input": "required name=search_term_string"
+            }
+          };
+          html = html.replace('<script id="dynamic-seo-schema"></script>', `<script id="dynamic-seo-schema" type="application/ld+json">${JSON.stringify(homeSchema)}</script>`);
         }
         
         res.setHeader('Content-Type', 'text/html');

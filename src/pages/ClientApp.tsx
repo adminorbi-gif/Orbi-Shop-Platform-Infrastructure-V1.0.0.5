@@ -856,42 +856,6 @@ export default function ClientApp() {
     if (ogDesc) ogDesc.setAttribute('content', currentDesc);
   }, [committedSearch, selectedNiche, lang]);
 
-  // SEO: Structured Data for the Marketplace Platform
-  const marketplaceStructuredData = useMemo(() => {
-    const base = window.location.origin;
-    
-    // Website Search Schema
-    const websiteSchema = {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "Orbi Shop",
-      "url": base + "/",
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": {
-          "@type": "EntryPoint",
-          "urlTemplate": base + "/?q={search_term_string}"
-        },
-        "query-input": "required name=search_term_string"
-      }
-    };
-
-    // ItemList for currently visible top products (to help AIs discover links)
-    const itemListSchema = {
-      "@context": "https://schema.org",
-      "@type": "ItemList",
-      "name": committedSearch ? `Search results for ${committedSearch}` : "Orbi Shop Featured Products",
-      "itemListElement": products.slice(0, 15).map((p, idx) => ({
-        "@type": "ListItem",
-        "position": idx + 1,
-        "url": `${base}/?product=${p.id}`,
-        "name": p.name
-      }))
-    };
-
-    return [websiteSchema, itemListSchema];
-  }, [products, committedSearch]);
-
   const [viewSeller, setViewSeller] = useState<SellerProfile | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedProductForReview, setSelectedProductForReview] = useState<{
@@ -1940,70 +1904,71 @@ Zawadi ya Alama za Uaminifu zilizoongezwa kwenye kibeti chako: +${earned} Points
     try {
       if (!isBackground) setIsLoading(true);
 
-      let allProducts: any[] = [];
-      try {
-        allProducts = await db.getProducts();
-      } catch (err) {
-        console.warn("Failed to load products from API:", err);
-      }
+      const [
+        productsRes,
+        promosRes,
+        bannersRes,
+        ordersRes,
+        reviewsRes,
+        couponsRes,
+        nichesRes,
+        sellersRes,
+        adsRes
+      ] = await Promise.allSettled([
+        db.getProducts(),
+        db.getPromotions(),
+        db.getPromotionalBanners(),
+        db.getOrders(),
+        db.getReviews(),
+        db.getCoupons(),
+        db.getNiches(),
+        db.getSellers(),
+        db.getAds()
+      ]);
 
-      const visibleProducts = allProducts
-        ? allProducts.filter((p) => p.visible !== false)
-        : [];
+      // 1. Process Products
+      const allProducts = productsRes.status === 'fulfilled' ? productsRes.value : [];
+      const visibleProducts = allProducts.filter((p: any) => p.visible !== false);
       setProducts(visibleProducts);
 
-      let vs: any[] = [];
-      try {
-        vs = (await db.getPromotions()) || [];
-      } catch (err) {
-        console.warn("Failed to load promotions from API:", err);
-      }
-      const visiblePromos = vs ? vs.filter((p) => p.visible) : [];
+      // 2. Process Promotions
+      const allPromos = promosRes.status === 'fulfilled' ? promosRes.value : [];
+      const visiblePromos = allPromos.filter((p: any) => p.visible);
       setPromos(visiblePromos);
 
-      try {
-        const activeBanners = (await db.getPromotionalBanners()).filter(
-          (b) => b.visible,
-        );
-        setPromotionalBanners(activeBanners);
-      } catch (err) {
-        console.warn("Failed to load promotional banners:", err);
-        setPromotionalBanners([]);
-      }
+      // 3. Process Promotional Banners
+      const activeBanners = (bannersRes.status === 'fulfilled' ? bannersRes.value : []).filter(
+        (b: any) => b.visible,
+      );
+      setPromotionalBanners(activeBanners);
 
-      let allOrders: any[] = [];
-      try {
-        allOrders = await db.getOrders();
-      } catch (err) {
-        console.warn("Failed to load orders from API:", err);
-      }
+      // 4. Process Orders
+      const allOrders = ordersRes.status === 'fulfilled' ? ordersRes.value : [];
       setOrders(allOrders);
 
-      try {
-        const revsData = await db.getReviews();
-        const mappedRevs: Record<string, any[]> = {};
-        if (revsData) {
-          revsData.forEach((r: any) => {
-            if (r.productId) {
-              if (!mappedRevs[r.productId]) mappedRevs[r.productId] = [];
-              mappedRevs[r.productId].push({
-                id: r.id,
-                userName: r.userName,
-                rating: r.rating,
-                comment: r.comment,
-                createdAt: r.createdAt,
-              });
-            }
-          });
-        }
-        setAllReviews(mappedRevs);
-      } catch (e) {
-        console.warn("Could not load global reviews map", e);
+      // 5. Process Reviews
+      const revsData = reviewsRes.status === 'fulfilled' ? reviewsRes.value : [];
+      const mappedRevs: Record<string, any[]> = {};
+      if (revsData) {
+        revsData.forEach((r: any) => {
+          if (r.productId) {
+            if (!mappedRevs[r.productId]) mappedRevs[r.productId] = [];
+            mappedRevs[r.productId].push({
+              id: r.id,
+              userName: r.userName,
+              rating: r.rating,
+              comment: r.comment,
+              createdAt: r.createdAt,
+            });
+          }
+        });
       }
+      setAllReviews(mappedRevs);
 
+      // 6. Process Shuffle Weights
       if (!isBackground) {
         const weights: Record<string, number> = {};
-        visibleProducts.forEach((p) => {
+        visibleProducts.forEach((p: any) => {
           const combined = `${visitorId}_${p.id}`;
           let hash = 0;
           for (let i = 0; i < combined.length; i++) {
@@ -2012,7 +1977,7 @@ Zawadi ya Alama za Uaminifu zilizoongezwa kwenye kibeti chako: +${earned} Points
           }
           weights[p.id] = Math.abs(hash % 1000000) / 1000000;
         });
-        visiblePromos.forEach((pr) => {
+        visiblePromos.forEach((pr: any) => {
           const combined = `${visitorId}_${pr.id}`;
           let hash = 0;
           for (let i = 0; i < combined.length; i++) {
@@ -2024,53 +1989,30 @@ Zawadi ya Alama za Uaminifu zilizoongezwa kwenye kibeti chako: +${earned} Points
         setShuffleWeights(weights);
       }
 
-      // Load coupons
-      let cpns: any[] = [];
-      try {
-        cpns = await db.getCoupons();
-      } catch (err) {
-        console.warn("Failed to load coupons from API:", err);
-      }
-      setCoupons(cpns);
+      // 7. Process Coupons, Niches, Sellers, Ads
+      const allCoupons = couponsRes.status === 'fulfilled' ? couponsRes.value : [];
+      setCoupons(allCoupons);
 
-      let nchs: any[] = [];
-      try {
-        nchs = await db.getNiches();
-      } catch (err) {
-        console.warn("Failed to load niches from API:", err);
-      }
-      setSystemNiches(nchs);
+      const allNiches = nichesRes.status === 'fulfilled' ? nichesRes.value : [];
+      setSystemNiches(allNiches);
 
-      // load sellers
-      let slrs: any[] = [];
-      try {
-        slrs = await db.getSellers();
-      } catch (err) {
-        console.warn("Failed to load sellers from API:", err);
-      }
-      setSellers(slrs);
+      const allSellers = sellersRes.status === 'fulfilled' ? sellersRes.value : [];
+      setSellers(allSellers);
 
-      // load paid placement ads
-      let paidAds: any[] = [];
-      try {
-        paidAds = await db.getAds();
-      } catch (err) {
-        console.warn("Failed to load ads from API:", err);
-      }
-      setMarketplaceAds(paidAds);
+      const allAds = adsRes.status === 'fulfilled' ? adsRes.value : [];
+      setMarketplaceAds(allAds);
 
+      // 8. Handle initial URL selection (if any)
       const params = new URLSearchParams(window.location.search);
       const prodId = params.get("product");
       if (prodId) {
-        const prod = allProducts.find((p) => p.id === prodId);
-        if (prod) {
-          setSelectedProduct(prod);
-        }
+        const prod = allProducts.find((p: any) => p.id === prodId);
+        if (prod) setSelectedProduct(prod);
       }
 
       const sellerId = params.get("seller");
       if (sellerId) {
-        const seller = slrs.find((s) => s.id === sellerId);
+        const seller = allSellers.find((s: any) => s.id === sellerId);
         if (seller) setViewSeller(seller);
       }
 
@@ -2103,7 +2045,7 @@ Zawadi ya Alama za Uaminifu zilizoongezwa kwenye kibeti chako: +${earned} Points
     } finally {
       if (!isBackground) setIsLoading(false);
     }
-  }, []);
+  }, [visitorId]);
 
   useEffect(() => {
     loadData();
@@ -2251,182 +2193,13 @@ Zawadi ya Alama za Uaminifu zilizoongezwa kwenye kibeti chako: +${earned} Points
       : products;
   }, [products, viewSeller]);
 
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [similarSuggestions, setMoreSimilarSuggestions] = useState<Product[]>(
-    [],
-  );
-  const adPlacementIndex = useMemo(() => {
-    if (filteredProducts.length === 0) return -1;
-    const hash = hashString(visitorId || "default");
-
-    const minIndex = Math.min(
-      4,
-      Math.max(1, Math.floor(filteredProducts.length / 2)),
-    );
-    const maxIndex = Math.min(8, filteredProducts.length - 1);
-
-    if (minIndex >= maxIndex) {
-      return filteredProducts.length > 1
-        ? Math.floor(filteredProducts.length / 2)
-        : 1;
-    }
-
-    return minIndex + (hash % (maxIndex - minIndex + 1));
-  }, [filteredProducts.length, visitorId]);
-  const [suggestions, setSuggestions] = useState<Product[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-
-  useEffect(() => {
-    if (!search.trim()) {
-      setDebouncedSearch("");
-      setCommittedSearch("");
-      setSuggestions([]);
-      setExpandedKeywords([]);
-      return;
-    }
-
-    const handler = setTimeout(() => {
-      setDebouncedSearch(search);
-    }, 100);
-    return () => clearTimeout(handler);
-  }, [search]);
-
-  const applySearch = (term: string) => {
-    const trimmed = term.trim();
-    setSearch(trimmed);
-    setCommittedSearch(trimmed);
-    setShowSuggestions(false);
-
-    if (trimmed) {
-      try {
-        const historyData = localStorage.getItem("orbi_user_search_history");
-        let historyList: string[] = historyData ? JSON.parse(historyData) : [];
-        if (!Array.isArray(historyList)) historyList = [];
-
-        historyList = historyList.filter(
-          (item) => item && item.toLowerCase() !== trimmed.toLowerCase(),
-        );
-        historyList.unshift(trimmed);
-        historyList = historyList.slice(0, 8);
-
-        localStorage.setItem(
-          "orbi_user_search_history",
-          JSON.stringify(historyList),
-        );
-        setSearchHistory(historyList);
-      } catch (e) {
-        console.error("Failed to save search history:", e);
-      }
-    }
-  };
-
-  const clearSearchHistory = () => {
-    try {
-      localStorage.removeItem("orbi_user_search_history");
-      setSearchHistory([]);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  useEffect(() => {
-    if (!debouncedSearch.trim()) {
-      setExpandedKeywords([]);
-      return;
-    }
-
-    let isMounted = true;
-    const fetchExpanded = async () => {
-      try {
-        setIsExpandingSearch(true);
-        const sid =
-          localStorage.getItem("orbi_visitor_session_id") ||
-          (() => {
-            const newSid =
-              "v-" + Math.random().toString(36).substring(2, 11).toUpperCase();
-            localStorage.setItem("orbi_visitor_session_id", newSid);
-            return newSid;
-          })();
-        const devType =
-          window.innerWidth < 640
-            ? "Mobile"
-            : window.innerWidth < 1024
-              ? "Tablet"
-              : "Desktop";
-        let carrier = localStorage.getItem("orbi_visitor_carrier");
-        if (!carrier) {
-          const carrierList = [
-            "Vodacom",
-            "Airtel",
-            "Halotel",
-            "Tigo",
-            "TTCL",
-            "WiFi",
-          ];
-          carrier = carrierList[Math.floor(Math.random() * carrierList.length)];
-          localStorage.setItem("orbi_visitor_carrier", carrier);
-        }
-        const res = await fetch(
-          `/api/search/expand?q=${encodeURIComponent(debouncedSearch)}&sessionId=${sid}&carrier=${carrier}&device=${devType}`,
-        );
-        const json = await res.json();
-        if (isMounted && json.success && Array.isArray(json.keywords)) {
-          setExpandedKeywords(json.keywords);
-        }
-      } catch (err) {
-        console.error("AI Search query expansion error:", err);
-      } finally {
-        if (isMounted) {
-          setIsExpandingSearch(false);
-        }
-      }
-    };
-
-    fetchExpanded();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [debouncedSearch]);
-
-  const { popularCategories, popularSearches } = useMemo(() => {
-    const catCounts: Record<string, number> = {};
-    const tagCounts: Record<string, number> = {};
-    const filteredForNiche = products.filter(
-      (p) =>
-        selectedNiche === "Zote" || (p.niche || "Mengineyo") === selectedNiche,
-    );
-
-    filteredForNiche.forEach((p) => {
-      const sales = salesCounts[p.id] || 0;
-      catCounts[p.category] = (catCounts[p.category] || 0) + sales + 1;
-      p.tags.forEach((t) => {
-        const tLower = t.trim().toLowerCase();
-        if (tLower) {
-          tagCounts[tLower] = (tagCounts[tLower] || 0) + sales + 1;
-        }
-      });
-    });
-    return {
-      popularCategories: Object.entries(catCounts)
-        .sort((a, b) => b[1] - a[1])
-        .map((entry) => entry[0])
-        .filter((c) => c && c !== "Zote")
-        .slice(0, 4),
-      popularSearches: Object.entries(tagCounts)
-        .sort((a, b) => b[1] - a[1])
-        .map((entry) => entry[0])
-        .slice(0, 5),
-    };
-  }, [products, salesCounts, selectedNiche]);
-
   const searchIndex = useMemo(() => {
     return new InvertedIndexSearch(filteredProductsBySeller);
   }, [filteredProductsBySeller]);
 
-  useEffect(() => {
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  const { filteredProducts, similarSuggestions, suggestions } = useMemo(() => {
     const searchActive = committedSearch && committedSearch.trim().length > 0;
     const matchedProducts = searchActive
       ? searchIndex.search(committedSearch, expandedKeywords)
@@ -2730,8 +2503,8 @@ Zawadi ya Alama za Uaminifu zilizoongezwa kwenye kibeti chako: +${earned} Points
         const wB = shuffleWeights[b.id] || 0.5;
         return wA - wB;
       });
-    setFilteredProducts(filtered);
 
+    let relSugg: Product[] = [];
     if (
       filtered.length === 0 &&
       committedSearch &&
@@ -2749,56 +2522,57 @@ Zawadi ya Alama za Uaminifu zilizoongezwa kwenye kibeti chako: +${earned} Points
         .filter((item) => item.score > 0)
         .sort((a, b) => b.score - a.score)
         .map((item) => item.p);
-      setMoreSimilarSuggestions(relaxed.slice(0, 12));
-    } else {
-      setMoreSimilarSuggestions([]);
+      relSugg = relaxed.slice(0, 12);
     }
 
+    let suggestList: Product[] = [];
     if (debouncedSearch.length > 1) {
       const suggestMatched = searchIndex.search(
         debouncedSearch,
         expandedKeywords,
       );
-      setSuggestions(
-        suggestMatched
-          .sort((a, b) => {
-            const aSeller = sellers.find((s) => s.id === a.sellerId);
-            const bSeller = sellers.find((s) => s.id === b.sellerId);
+      suggestList = suggestMatched
+        .sort((a, b) => {
+          const aSeller = sellers.find((s) => s.id === a.sellerId);
+          const bSeller = sellers.find((s) => s.id === b.sellerId);
 
-            const getSuggestScore = (
-              p: Product,
-              s: SellerProfile | undefined,
-            ) => {
-              let score = 0;
-              if (likedProductIds.includes(p.id)) score += 100000;
+          const getSuggestScore = (
+            p: Product,
+            s: SellerProfile | undefined,
+          ) => {
+            let score = 0;
+            if (likedProductIds.includes(p.id)) score += 100000;
 
-              const hasPaidPlan =
-                s?.activePlanId && s.activePlanId.toLowerCase() !== "free";
-              if (hasPaidPlan) score += 40000;
+            const hasPaidPlan =
+              s?.activePlanId && s.activePlanId.toLowerCase() !== "free";
+            if (hasPaidPlan) score += 40000;
 
-              const isPro = s?.isPro && s?.proUntil && s.proUntil > Date.now();
-              if (isPro) score += 25000;
+            const isPro = s?.isPro && s?.proUntil && s.proUntil > Date.now();
+            if (isPro) score += 25000;
 
-              if (p.niche && likedNiches.includes(p.niche.toLowerCase()))
-                score += 20000;
+            if (p.niche && likedNiches.includes(p.niche.toLowerCase()))
+              score += 20000;
 
-              return score;
-            };
+            return score;
+          };
 
-            const scoreA = getSuggestScore(a, aSeller);
-            const scoreB = getSuggestScore(b, bSeller);
+          const scoreA = getSuggestScore(a, aSeller);
+          const scoreB = getSuggestScore(b, bSeller);
 
-            if (scoreA !== scoreB) {
-              return scoreB - scoreA;
-            }
+          if (scoreA !== scoreB) {
+            return scoreB - scoreA;
+          }
 
-            return (salesCounts[b.id] || 0) - (salesCounts[a.id] || 0);
-          })
-          .slice(0, 5),
-      );
-    } else {
-      setSuggestions([]);
+          return (salesCounts[b.id] || 0) - (salesCounts[a.id] || 0);
+        })
+        .slice(0, 5);
     }
+
+    return { 
+      filteredProducts: filtered, 
+      similarSuggestions: relSugg, 
+      suggestions: suggestList 
+    };
   }, [
     debouncedSearch,
     committedSearch,
@@ -2819,7 +2593,171 @@ Zawadi ya Alama za Uaminifu zilizoongezwa kwenye kibeti chako: +${earned} Points
     expandedKeywords,
     likedProductIds,
     likedNiches,
+    prefs
   ]);
+  const adPlacementIndex = useMemo(() => {
+    if (filteredProducts.length === 0) return -1;
+    const hash = hashString(visitorId || "default");
+
+    const minIndex = Math.min(
+      4,
+      Math.max(1, Math.floor(filteredProducts.length / 2)),
+    );
+    const maxIndex = Math.min(8, filteredProducts.length - 1);
+
+    if (minIndex >= maxIndex) {
+      return filteredProducts.length > 1
+        ? Math.floor(filteredProducts.length / 2)
+        : 1;
+    }
+
+    return minIndex + (hash % (maxIndex - minIndex + 1));
+  }, [filteredProducts.length, visitorId]);
+
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  useEffect(() => {
+    if (!search.trim()) {
+      setDebouncedSearch("");
+      setCommittedSearch("");
+      setExpandedKeywords([]);
+      return;
+    }
+
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 100);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  const applySearch = (term: string) => {
+    const trimmed = term.trim();
+    setSearch(trimmed);
+    setCommittedSearch(trimmed);
+    setShowSuggestions(false);
+
+    if (trimmed) {
+      try {
+        const historyData = localStorage.getItem("orbi_user_search_history");
+        let historyList: string[] = historyData ? JSON.parse(historyData) : [];
+        if (!Array.isArray(historyList)) historyList = [];
+
+        historyList = historyList.filter(
+          (item) => item && item.toLowerCase() !== trimmed.toLowerCase(),
+        );
+        historyList.unshift(trimmed);
+        historyList = historyList.slice(0, 8);
+
+        localStorage.setItem(
+          "orbi_user_search_history",
+          JSON.stringify(historyList),
+        );
+        setSearchHistory(historyList);
+      } catch (e) {
+        console.error("Failed to save search history:", e);
+      }
+    }
+  };
+
+  const clearSearchHistory = () => {
+    try {
+      localStorage.removeItem("orbi_user_search_history");
+      setSearchHistory([]);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    if (!debouncedSearch.trim()) {
+      setExpandedKeywords([]);
+      return;
+    }
+
+    let isMounted = true;
+    const fetchExpanded = async () => {
+      try {
+        setIsExpandingSearch(true);
+        const sid =
+          localStorage.getItem("orbi_visitor_session_id") ||
+          (() => {
+            const newSid =
+              "v-" + Math.random().toString(36).substring(2, 11).toUpperCase();
+            localStorage.setItem("orbi_visitor_session_id", newSid);
+            return newSid;
+          })();
+        const devType =
+          window.innerWidth < 640
+            ? "Mobile"
+            : window.innerWidth < 1024
+              ? "Tablet"
+              : "Desktop";
+        let carrier = localStorage.getItem("orbi_visitor_carrier");
+        if (!carrier) {
+          const carrierList = [
+            "Vodacom",
+            "Airtel",
+            "Halotel",
+            "Tigo",
+            "TTCL",
+            "WiFi",
+          ];
+          carrier = carrierList[Math.floor(Math.random() * carrierList.length)];
+          localStorage.setItem("orbi_visitor_carrier", carrier);
+        }
+        const res = await fetch(
+          `/api/search/expand?q=${encodeURIComponent(debouncedSearch)}&sessionId=${sid}&carrier=${carrier}&device=${devType}`,
+        );
+        const json = await res.json();
+        if (isMounted && json.success && Array.isArray(json.keywords)) {
+          setExpandedKeywords(json.keywords);
+        }
+      } catch (err) {
+        console.error("AI Search query expansion error:", err);
+      } finally {
+        if (isMounted) {
+          setIsExpandingSearch(false);
+        }
+      }
+    };
+
+    fetchExpanded();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [debouncedSearch]);
+
+  const { popularCategories, popularSearches } = useMemo(() => {
+    const catCounts: Record<string, number> = {};
+    const tagCounts: Record<string, number> = {};
+    const filteredForNiche = products.filter(
+      (p) =>
+        selectedNiche === "Zote" || (p.niche || "Mengineyo") === selectedNiche,
+    );
+
+    filteredForNiche.forEach((p) => {
+      const sales = salesCounts[p.id] || 0;
+      catCounts[p.category] = (catCounts[p.category] || 0) + sales + 1;
+      p.tags.forEach((t) => {
+        const tLower = t.trim().toLowerCase();
+        if (tLower) {
+          tagCounts[tLower] = (tagCounts[tLower] || 0) + sales + 1;
+        }
+      });
+    });
+    return {
+      popularCategories: Object.entries(catCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map((entry) => entry[0])
+        .filter((c) => c && c !== "Zote")
+        .slice(0, 4),
+      popularSearches: Object.entries(tagCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map((entry) => entry[0])
+        .slice(0, 5),
+    };
+  }, [products, salesCounts, selectedNiche]);
 
   const iconMap: Record<string, any> = {
     Smartphone,
@@ -6334,11 +6272,6 @@ Zawadi ya Alama za Uaminifu zilizoongezwa kwenye kibeti chako: +${earned} Points
           <span>{toastMsg}</span>
         </div>
       )}
-
-      {/* SEO: Inject Marketplace Structured Data for Crawlers */}
-      <script type="application/ld+json">
-        {JSON.stringify(marketplaceStructuredData)}
-      </script>
     </>
   );
 }
