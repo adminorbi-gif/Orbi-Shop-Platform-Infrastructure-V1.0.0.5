@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 import { GoogleGenAI } from "@google/genai";
 import rateLimit from "express-rate-limit";
 import subscriptionRouter from "./server/routes/subscriptions";
@@ -31,7 +32,11 @@ const PORT = 3000;
 // Initialize Supabase Client on the server for real data sync
 const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://lvkyttxfgrmsxafvtcxw.supabase.co';
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_0ThBuOrA98M6awmeGKc3cw_nrV-mJtO';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  realtime: {
+    transport: ws,
+  },
+});
 
 // Lazy initialize Gemini API client to prevent crashing if environment key is missing
 let aiClient: any = null;
