@@ -14,6 +14,7 @@ RUN npm install
 COPY . .
 
 # Build the application (Vite + Server bundle)
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build
 
 # Expose the port the app runs on
