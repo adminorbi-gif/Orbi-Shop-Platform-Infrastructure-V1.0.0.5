@@ -1904,26 +1904,11 @@ Zawadi ya Alama za Uaminifu zilizoongezwa kwenye kibeti chako: +${earned} Points
     try {
       if (!isBackground) setIsLoading(true);
 
-      const [
-        productsRes,
-        promosRes,
-        bannersRes,
-        ordersRes,
-        reviewsRes,
-        couponsRes,
-        nichesRes,
-        sellersRes,
-        adsRes
-      ] = await Promise.allSettled([
+      // Core storefront data needed immediately
+      const [productsRes, promosRes, bannersRes] = await Promise.allSettled([
         db.getProducts(),
         db.getPromotions(),
-        db.getPromotionalBanners(),
-        db.getOrders(),
-        db.getReviews(),
-        db.getCoupons(),
-        db.getNiches(),
-        db.getSellers(),
-        db.getAds()
+        db.getPromotionalBanners()
       ]);
 
       // 1. Process Products
@@ -1941,29 +1926,6 @@ Zawadi ya Alama za Uaminifu zilizoongezwa kwenye kibeti chako: +${earned} Points
         (b: any) => b.visible,
       );
       setPromotionalBanners(activeBanners);
-
-      // 4. Process Orders
-      const allOrders = ordersRes.status === 'fulfilled' ? ordersRes.value : [];
-      setOrders(allOrders);
-
-      // 5. Process Reviews
-      const revsData = reviewsRes.status === 'fulfilled' ? reviewsRes.value : [];
-      const mappedRevs: Record<string, any[]> = {};
-      if (revsData) {
-        revsData.forEach((r: any) => {
-          if (r.productId) {
-            if (!mappedRevs[r.productId]) mappedRevs[r.productId] = [];
-            mappedRevs[r.productId].push({
-              id: r.id,
-              userName: r.userName,
-              rating: r.rating,
-              comment: r.comment,
-              createdAt: r.createdAt,
-            });
-          }
-        });
-      }
-      setAllReviews(mappedRevs);
 
       // 6. Process Shuffle Weights
       if (!isBackground) {
@@ -1989,60 +1951,94 @@ Zawadi ya Alama za Uaminifu zilizoongezwa kwenye kibeti chako: +${earned} Points
         setShuffleWeights(weights);
       }
 
-      // 7. Process Coupons, Niches, Sellers, Ads
-      const allCoupons = couponsRes.status === 'fulfilled' ? couponsRes.value : [];
-      setCoupons(allCoupons);
+      if (!isBackground) setIsLoading(false);
 
-      const allNiches = nichesRes.status === 'fulfilled' ? nichesRes.value : [];
-      setSystemNiches(allNiches);
+      // Fetch secondary data without blocking the UI
+      Promise.allSettled([
+        db.getOrders(),
+        db.getReviews(),
+        db.getCoupons(),
+        db.getNiches(),
+        db.getSellers(),
+        db.getAds()
+      ]).then(([ordersRes, reviewsRes, couponsRes, nichesRes, sellersRes, adsRes]) => {
+        // 4. Process Orders
+        const allOrders = ordersRes.status === 'fulfilled' ? ordersRes.value : [];
+        setOrders(allOrders);
 
-      const allSellers = sellersRes.status === 'fulfilled' ? sellersRes.value : [];
-      setSellers(allSellers);
-
-      const allAds = adsRes.status === 'fulfilled' ? adsRes.value : [];
-      setMarketplaceAds(allAds);
-
-      // 8. Handle initial URL selection (if any)
-      const params = new URLSearchParams(window.location.search);
-      const prodId = params.get("product");
-      if (prodId) {
-        const prod = allProducts.find((p: any) => p.id === prodId);
-        if (prod) setSelectedProduct(prod);
-      }
-
-      const sellerId = params.get("seller");
-      if (sellerId) {
-        const seller = allSellers.find((s: any) => s.id === sellerId);
-        if (seller) setViewSeller(seller);
-      }
-
-      const orderIdParam = params.get("order") || params.get("order_id");
-      if (orderIdParam) {
-        setShowTrackOrder(true);
-      }
-
-      const invData = params.get("invoice");
-      if (invData) {
-        try {
-          const decoded = JSON.parse(decodeURIComponent(atob(invData)));
-          if (decoded && decoded.id) {
-            setViewInvoice(decoded);
-            window.history.replaceState(
-              {},
-              document.title,
-              window.location.pathname,
-            );
-          }
-        } catch (err) {
-          console.error("Failed to load invoice from URL", err);
+        // 5. Process Reviews
+        const revsData = reviewsRes.status === 'fulfilled' ? reviewsRes.value : [];
+        const mappedRevs: Record<string, any[]> = {};
+        if (revsData) {
+          revsData.forEach((r: any) => {
+            if (r.productId) {
+              if (!mappedRevs[r.productId]) mappedRevs[r.productId] = [];
+              mappedRevs[r.productId].push({
+                id: r.id,
+                userName: r.userName,
+                rating: r.rating,
+                comment: r.comment,
+                createdAt: r.createdAt,
+              });
+            }
+          });
         }
-      }
+        setAllReviews(mappedRevs);
+
+        // 7. Process Coupons, Niches, Sellers, Ads
+        const allCoupons = couponsRes.status === 'fulfilled' ? couponsRes.value : [];
+        setCoupons(allCoupons);
+
+        const allNiches = nichesRes.status === 'fulfilled' ? nichesRes.value : [];
+        setSystemNiches(allNiches);
+
+        const allSellers = sellersRes.status === 'fulfilled' ? sellersRes.value : [];
+        setSellers(allSellers);
+
+        const allAds = adsRes.status === 'fulfilled' ? adsRes.value : [];
+        setMarketplaceAds(allAds);
+
+        // 8. Handle initial URL selection (if any)
+        const params = new URLSearchParams(window.location.search);
+        const prodId = params.get("product");
+        if (prodId) {
+          const prod = allProducts.find((p: any) => p.id === prodId);
+          if (prod) setSelectedProduct(prod);
+        }
+
+        const sellerId = params.get("seller");
+        if (sellerId) {
+          const seller = allSellers.find((s: any) => s.id === sellerId);
+          if (seller) setViewSeller(seller);
+        }
+
+        const orderIdParam = params.get("order") || params.get("order_id");
+        if (orderIdParam) {
+          setShowTrackOrder(true);
+        }
+
+        const invData = params.get("invoice");
+        if (invData) {
+          try {
+            const decoded = JSON.parse(decodeURIComponent(atob(invData)));
+            if (decoded && decoded.id) {
+              setViewInvoice(decoded);
+              window.history.replaceState(
+                {},
+                document.title,
+                window.location.pathname,
+              );
+            }
+          } catch (err) {
+            console.error("Failed to load invoice from URL", err);
+          }
+        }
+      });
     } catch (error: any) {
       console.warn(
         "[loadData] Failed to retrieve storefront resources, will retry:",
         error.message || error,
       );
-    } finally {
       if (!isBackground) setIsLoading(false);
     }
   }, [visitorId]);

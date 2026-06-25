@@ -60,15 +60,15 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-orange-500/30 backdrop-blur-md font-sans">
-        <div className="flex flex-col items-center gap-3 bg-white/10 p-8 rounded-3xl shadow-2xl backdrop-blur-xl border border-white/20">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-md font-sans">
+        <div className="flex flex-col items-center gap-4">
           <img 
             src="https://media-stock.orbifinancial.com/OrbiShop_Logo_Blue.png" 
             alt="Orbi Logo" 
-            className="w-16 h-16 object-contain animate-pulse" 
+            className="w-12 h-12 object-contain animate-pulse grayscale" 
             referrerPolicy="no-referrer"
           />
-          <p className="text-xs uppercase tracking-wider font-bold text-white">Verifying Session...</p>
+          <p className="text-sm uppercase tracking-widest font-medium text-slate-500">Verifying Session...</p>
         </div>
       </div>
     );
