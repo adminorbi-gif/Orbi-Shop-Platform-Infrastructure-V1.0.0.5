@@ -3463,6 +3463,7 @@ Zawadi ya Alama za Uaminifu zilizoongezwa kwenye kibeti chako: +${earned} Points
 
   return (
     <>
+      {isLoading && <LoadingOverlay />}
       {showAboutPage && (
         <div className="fixed inset-0 z-[999999] bg-white overflow-y-auto">
           <AboutUsPage
