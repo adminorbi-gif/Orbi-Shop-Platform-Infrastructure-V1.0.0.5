@@ -6,7 +6,10 @@ import { DialogProvider } from './components/CustomDialogContext.tsx';
 import { aiPilotEngine } from './engine/AIPilotEngine';
 
 // Start the background engine for platform-wide automated tasks.
-aiPilotEngine.start();
+// Delay it to prevent blocking the initial render.
+setTimeout(() => {
+  aiPilotEngine.start();
+}, 2000);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

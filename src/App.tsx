@@ -63,9 +63,9 @@ export default function App() {
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-md font-sans">
         <div className="flex flex-col items-center gap-4">
           <img 
-            src="https://media-stock.orbifinancial.com/OrbiShop_Logo_Blue.png" 
+            src="/favicon.png" 
             alt="Orbi Logo" 
-            className="w-12 h-12 object-contain animate-pulse grayscale" 
+            className="w-12 h-12 object-contain animate-pulse grayscale rounded-full" 
             referrerPolicy="no-referrer"
           />
           <p className="text-sm uppercase tracking-widest font-medium text-slate-500">Verifying Session...</p>
