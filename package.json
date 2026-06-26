@@ -25,6 +25,7 @@
     "express": "^4.21.2",
     "express-rate-limit": "^8.5.2",
     "html5-qrcode": "^2.3.8",
+    "jimp": "^1.6.1",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "multer": "^2.2.0",
